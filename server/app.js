@@ -19,6 +19,14 @@ app.get("/", (req, res) => {
 })
 
 
+// all routes import go here
+import userRouter from "./routes/user.routes.js";
+
+
+
+app.use("/api/v1/users", userRouter);
+
+
 export default app;
 
 
