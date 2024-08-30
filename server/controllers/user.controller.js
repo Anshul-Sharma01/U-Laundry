@@ -3,7 +3,7 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { User } from "../models/user.model.js";
 import {uploadOnCloudinary} from "../utils/cloudinary.js";
-import cookieParser from "cookie-parser";
+
 
 const cookieOptions = {
     maxAge : 7 * 24 * 60 * 60 * 1000,
@@ -39,7 +39,7 @@ const registerUser = asyncHandler(async(req, res, next) => {
         }
         
         const emailExists = await User.find({ email });
-        if(email){
+        if(emailExists){
             throw new ApiError(400, "Email already Exists");
         }
 
@@ -113,6 +113,43 @@ const loginUser = asyncHandler(async(req, res, next) => {
 
     }catch(err){
         throw new ApiError(400, "Error occurred while logging in user");
+    }
+})
+
+const logout = asyncHandler(async (req, res, next) => {
+    try{
+        await User.findByIdAndUpdate(
+            req.user._id,
+            {
+                $unset : {
+                    refreshToken : undefined
+                }
+            },
+            {
+                new : true
+            }
+        )
+
+        return res.status(200)
+        .clearCookie("accessToken", cookieOptions)
+        .clearCookie("refreshToken", cookieOptions)
+        .json(
+            new ApiResponse(200, {}, "User logged Out successfully")
+        );
+    }catch(err){
+        throw new ApiError(400, err?.message || "Error occurred while logging out");
+    }
+})
+
+const getProfile = asyncHandler(async (req, res, next) => {
+    try{
+        const userId = req.user._id;
+        const user = await User.findById(userId);
+
+        return res.status(200)
+        .json(new ApiResponse(200, user, "User Profile fetched successfully"));
+    }catch(err){
+        throw new ApiError(400, err?.message || "Error occurred while fetching user profile");
     }
 })
 
