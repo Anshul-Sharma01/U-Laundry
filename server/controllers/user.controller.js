@@ -2,7 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js"
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { User } from "../models/user.model.js";
-import {uploadOnCloudinary} from "../utils/cloudinary.js";
+import {deleteFromCloudinary, uploadOnCloudinary} from "../utils/cloudinary.js";
 import sendEmail from "../utils/sendEmail.js";
 import crypto from "crypto";
 
@@ -277,6 +277,79 @@ const changePassword = asyncHandler(async(req, res, next) => {
     }
 })
 
+const updateUserDetails = asyncHandler(async(req, res, next ) => {
+    try{
+        const { hostelName, roomNumber } = req.body;
+        const userId = req.user._id;
+
+        if(!hostelName && !roomNumber){
+            throw new ApiError(400, "Atleast one field is necessary");
+        }
+        const updationData = {}
+        if(hostelName) { 
+            updationData.hostelName = hostelName;
+        } 
+        if(roomNumber){
+            updationData.roomNumber = roomNumber;
+        }
+
+        const user = await User.findByIdAndUpdate(
+            userId,
+            { $set : updationData },
+            { new : true }
+        )
+
+        if(!user){
+            throw new ApiError(400, "Some error occurred while updating..");
+        }
+
+        return res.status(200).json(new ApiResponse(200, user, "Details updated successfully"));
+
+    }catch(err){
+        throw new ApiError(400, err?.message || "Error occurred while updating user details !");
+    }
+})
+
+const updateUserAvatar = asyncHandler(async(req, res, next) => {
+    try{
+        
+        const userId = req.user._id;
+
+        if(req.file){
+            const localFilePath = req.file?.path;
+            if(!localFilePath){
+                throw new ApiError(400, "Avatar file is not uploaded");
+            }
+
+            const avatar = await uploadOnCloudinary(localFilePath);
+            if(!avatar){
+                throw new ApiError(400, "Avatar file is not updated !!");
+            }
+
+            const user = await User.findById(userId);
+
+            await deleteFromCloudinary(user.avatar.public_id);
+
+            user.avatar = {
+                public_id : avatar.public_id,
+                secure_url : avatar.secure_url
+            }
+            
+            await user.save();
+
+            return res.status(200)
+            .json(
+                new ApiResponse(200, user, "Avatar file is uploaded successfully")
+            );
+
+        }else{
+            throw new ApiError(400, "Avatar file is required");
+        }
+    }catch(err){
+        throw new ApiError(400, err?.message || "Error occurred while updating user avatar..");
+    }
+})
+
 
 export {
     registerUser,
@@ -285,6 +358,8 @@ export {
     getProfile,
     forgotPassword,
     resetPassword,
-    changePassword
+    changePassword,
+    updateUserDetails,
+    updateUserAvatar
 }
 

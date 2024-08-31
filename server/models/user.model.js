@@ -33,6 +33,7 @@ const userSchema = new Schema({
     },
     hostelName : {
         type : String,
+        enum : ['BOSE','ARYABHATTA','SARABHAI','CHANKAYA','TERESA','GARGI','KALPANA'],
         required : [true, "Hostel name is required !!"],
     },
     roomNumber : {
@@ -132,7 +133,7 @@ userSchema.methods = {
         )
     },
 
-    isPasswordCorrect : async function () {
+    isPasswordCorrect : async function (password) {
         return await bcryptjs.compare(password, this.password);
     },
 
