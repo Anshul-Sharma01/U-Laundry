@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 import { User } from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js"
 import {deleteFromCloudinary, uploadOnCloudinary} from "../utils/cloudinary.js";
+import { isValidObjectId } from "mongoose";
 
 
 const cookieOptions = {
@@ -393,6 +394,50 @@ const refreshAccessToken = asyncHandler(async(req, res, next) => {
     }
 })
 
+const getAllUsers = asyncHandler(async (req, res, next) => {
+    try{
+        const users = await User.find({});
+
+        if(users.length === 0){
+            return res.status(200).json(
+                new ApiResponse(200, {}, "Users not found")
+            );
+        }
+
+        return res.status(200)
+        .json(
+            new ApiResponse(200, users, "Users fetched successfully")
+        );
+
+    }catch(err){
+        throw new ApiError(400, "Error occurred while fetching all Users");
+    }
+})
+
+const deleteUser = asyncHandler(async (req, res, next) => {
+    try{
+        const { userId } = req.params;
+        
+        if(!isValidObjectId(userId)){
+            throw new ApiError(400, "Invalid User Id");
+        }
+
+        const deletedUser = await User.findByIdAndDelete(userId);
+
+        if(!deletedUser){
+            throw new ApiError(404, "User not found");
+        }
+
+        return res.status(200)
+        .json(
+            new ApiResponse(200, deletedUser, "User deleted successfully")
+        );
+
+    }catch(err){
+        throw new ApiError(400, "Error occurred while deleting  user");
+    }
+})
+
 
 export {
     registerUser,
@@ -404,6 +449,8 @@ export {
     changePassword,
     updateUserDetails,
     updateUserAvatar,
-    refreshAccessToken
+    refreshAccessToken,
+    getAllUsers,
+    deleteUser
 }
 
