@@ -1,10 +1,11 @@
-import { asyncHandler } from "../utils/asyncHandler.js"
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
-import { User } from "../models/user.model.js";
-import {deleteFromCloudinary, uploadOnCloudinary} from "../utils/cloudinary.js";
 import sendEmail from "../utils/sendEmail.js";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
+import { User } from "../models/user.model.js";
+import { asyncHandler } from "../utils/asyncHandler.js"
+import {deleteFromCloudinary, uploadOnCloudinary} from "../utils/cloudinary.js";
 
 
 const cookieOptions = {
@@ -350,6 +351,48 @@ const updateUserAvatar = asyncHandler(async(req, res, next) => {
     }
 })
 
+const refreshAccessToken = asyncHandler(async(req, res, next) => {
+    try{
+        const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
+
+        if(!incomingRefreshToken){
+            throw new ApiError(401, "Unauthorized request");
+        }
+
+        const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+
+        const user = await User.findById(decodedToken?._id);
+
+        if(!user){
+            throw new ApiError(401, "Invalid refresh Token");
+        }
+
+        if(incomingRefreshToken !== user.refreshToken){
+            throw new ApiError(401, "Refresh Token is expired or used");
+        }
+
+        const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+
+        return res
+        .status(200)
+        .cookie("accessToken", accessToken, cookieOptions)
+        .cookie("refreshToken", refreshToken, cookieOptions)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    accessToken, refreshToken
+                },
+                "Access Token refreshed successfully"
+            )
+        )
+
+
+    }catch(err){
+        throw new ApiError(400, err?.message || "Error occurred while updating access Token")
+    }
+})
+
 
 export {
     registerUser,
@@ -360,6 +403,7 @@ export {
     resetPassword,
     changePassword,
     updateUserDetails,
-    updateUserAvatar
+    updateUserAvatar,
+    refreshAccessToken
 }
 

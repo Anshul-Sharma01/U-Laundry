@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
-import { changePassword, forgotPassword, getProfile, loginUser, logout, registerUser, resetPassword, updateUserAvatar, updateUserDetails } from "../controllers/user.controller.js";
+import { changePassword, forgotPassword, getProfile, loginUser, logout, refreshAccessToken, registerUser, resetPassword, updateUserAvatar, updateUserDetails } from "../controllers/user.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js"
 
 
@@ -36,6 +36,8 @@ router.route("/reset/:resetToken")
 router.route("/change-password")
 .patch(verifyJWT, changePassword);
 
+router.route("/refreh-token")
+.post(refreshAccessToken);
 
 
 // user details updation routes 
