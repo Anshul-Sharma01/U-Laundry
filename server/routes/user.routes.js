@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
-import { loginUser, registerUser } from "../controllers/user.controller.js";
-
+import { changePassword, forgotPassword, getProfile, loginUser, logout, registerUser, resetPassword } from "../controllers/user.controller.js";
+import { verifyJWT } from "../middlewares/auth.middleware.js"
 
 
 const router = Router();
@@ -15,10 +15,26 @@ router
     registerUser
 )
 
-
+// User-authentication routes
 router.route("/login")
 .post(loginUser);
 
+router.route("/logout")
+.post(verifyJWT, logout);
+
+router.route("/me")
+.post(verifyJWT, getProfile);
+
+
+// Password updation routes 
+router.route("/reset")
+.patch(verifyJWT, forgotPassword);
+
+router.route("/reset/:resetToken")
+.patch(resetPassword);
+
+router.route("/change-password")
+.patch(verifyJWT, changePassword);
 
 
 export default router;
