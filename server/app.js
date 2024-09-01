@@ -21,11 +21,11 @@ app.get("/", (req, res) => {
 
 // all routes import go here
 import userRouter from "./routes/user.routes.js";
-
+import orderRouter from "./routes/order.routes.js";
 
 
 app.use("/api/v1/users", userRouter);
-
+app.use("/api/v1/order", orderRouter);
 
 export default app;
 
