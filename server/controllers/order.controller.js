@@ -73,6 +73,48 @@ const updateOrderStatus = asyncHandler(async(req, res, next) => {
     }
 })
 
+const getOrderById = asyncHandler(async (req, res, next) => {
+    try{
+        const { orderId } = req.params;
+
+        if(!isValidObjectId(orderId)){
+            throw new ApiError(400, "Invalid Order Id");
+        }
+
+        const order = await Order.findById(orderId);
+
+        if(!order){
+            throw new ApiError(400, "Order does not exists");
+        }
+
+        return res.status(200)
+        .json(new ApiResponse(200, order, "Order details fetched successfully"));
+
+    }catch(err){
+        throw new ApiError(400, err?.message || "Error occurred while fetch order details");
+    }
+})
+
+
+const getOrdersByUser = asyncHandler(async (req, res, next) => {
+    try{
+        const { userId } = req.params;
+        if(!isValidObjectId(userId)){
+            throw new ApiError(400, "Invalid Order Id");
+        }
+
+        const userOrders = await Order.find({user : userId});
+
+        if(userOrders.length === 0){
+            return res.status(200).json(new ApiResponse(200, userOrders, "User Orders doesn't exists"));
+        }
+
+        return res.status(200).json(new ApiResponse(200, userOrders, "User Orders fetched successfully"));
+
+    }catch(err){
+        throw new ApiError(400, "Error occurred while fetching User orders");
+    }
+});
 
 
 
@@ -83,5 +125,7 @@ const updateOrderStatus = asyncHandler(async(req, res, next) => {
 export {
     addNewOrder,
     updateOrderStatus,
+    getOrderById,
+    getOrdersByUser
 }
 
