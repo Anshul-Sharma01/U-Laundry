@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { verifyJWT, verifyModerator, verifyAdmin } from "../middlewares/auth.middleware.js";
 import { addNewOrder, updateOrderStatus } from "../controllers/order.controller.js";
 
 
@@ -18,8 +18,8 @@ router.route("/add")
 
 
 // laundary-moderator routes
-router.route("/status/update")
-.patch(updateOrderStatus);
+router.route("/update/:orderId/:status")
+.patch( verifyModerator, updateOrderStatus);
 
 
 

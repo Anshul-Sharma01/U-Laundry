@@ -34,7 +34,7 @@ export const verifyAdmin = asyncHandler(async ( req, _, next) => {
     try{
         const { user } = req;
 
-        if(!user || user.role !== 'ADMIN'){
+        if(!user || user.role !== 'admin'){
             throw new ApiError(403, "Access Forbidden");
         } 
 
@@ -45,3 +45,17 @@ export const verifyAdmin = asyncHandler(async ( req, _, next) => {
     }
 })
 
+
+export const verifyModerator = asyncHandler(async(req, _ , next) => {
+    try{
+        const { user } = req;
+
+        if(!user || !user.role != 'laundary-moderator'){
+            throw new ApiError(403, "Access forbidden");
+        }
+        next();
+
+    }catch(err){
+        throw new ApiError(403, err?.message || "Access to this particular route is forbidden");
+    }
+})

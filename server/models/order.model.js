@@ -1,7 +1,12 @@
 import mongoose, { Schema } from "mongoose";
+import { User } from "./user.model.js";
 
 
 const orderSchema = new Schema({
+    user : {
+        type : Schema.Types.ObjectId,
+        ref : "User"
+    },
     moneyPaid : {
         type : String,
         required : [true, "Payment amount is required"],
