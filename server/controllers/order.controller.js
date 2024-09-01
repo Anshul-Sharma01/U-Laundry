@@ -73,6 +73,7 @@ const updateOrderStatus = asyncHandler(async(req, res, next) => {
     }
 })
 
+
 const getOrderById = asyncHandler(async (req, res, next) => {
     try{
         const { orderId } = req.params;
@@ -117,7 +118,83 @@ const getOrdersByUser = asyncHandler(async (req, res, next) => {
 });
 
 
+const cancelOrder = asyncHandler(async( req, res, next) => {
+    try{    
+        const { orderId } = req.params;
+        const userId = req.user._id;
+        
+        if(!isValidObjectId(orderId)){
+            throw new ApiError(400, "Invalid Order Id");
+        }
 
+        const order = await Order.findByIdAndUpdate(
+            { _id : orderId, user : userId, status : 'Order Placed' },
+            { $set : { status : 'Cancelled' } },
+            { new : true, useFindAndModify : false }
+        );
+
+        if(!order){
+            throw new ApiError(400, "Order cannot be cancelled or does not exists");
+        }
+
+        return res.status(200)
+        .json(
+            new ApiResponse(200, order, "Order cancelled successfully")
+        );
+    }catch(err){
+        throw new ApiError(400, "Error occurred while cancelling the order");
+    }
+})
+
+
+const getAllOrders = asyncHandler(async(req, res, next) => {
+    try{
+        const allOrders = await Order.find({})
+        
+        if(allOrders.length === 0){
+            return res.status(200)
+            .json(
+                new ApiResponse(200, allOrders, "No Orders")
+            );
+        }
+
+        return res.status(200)
+        .json(
+            new ApiResponse(200, allOrders, "All Orders fetched Successfully")
+        );
+
+    }catch(err){
+        throw new ApiError(400, err?.message || "Error occurred while fetching all orders");
+    }
+})
+
+
+const getOrdersByStatus = asyncHandler(async(req, res, next) => {
+    try{
+        const { status } = req.user._id;
+
+        if(!['Order Placed', 'Pending', 'Prepared', 'Picked Up'].includes(status)){
+            throw new ApiError(400, "Invalid status");
+        }
+
+        const orders = await Order.find({ status });
+
+        if(!orders){
+            return res.status(200)
+            .json(
+                new ApiResponse(200, orders, "No Orders Exists for the required status")
+            );
+        }
+
+        return res.status(200)
+        .json(
+            new ApiResponse(200, orders, "Orders fetched on the basis of status")
+        );
+
+    }catch(err){
+        throw new ApiError(400, err?.message || "Error occurred while fetching orders by status");
+    }
+})
 
 
 
@@ -126,6 +203,9 @@ export {
     addNewOrder,
     updateOrderStatus,
     getOrderById,
-    getOrdersByUser
+    getOrdersByUser,
+    cancelOrder,
+    getAllOrders,
+    getOrdersByStatus
 }
 
