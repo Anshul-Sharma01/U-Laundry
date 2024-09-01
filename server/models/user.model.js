@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+import { Order } from "./order.model.js";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
@@ -64,25 +65,9 @@ const userSchema = new Schema({
     },
     history : [
         {
-            moneyPaid : {
-                type : Number,
-                required : [true, "Payment amount is required"],
-                min : [0, "Payment amount should be a positive number"]
-            },
-            clothesWashed : {
-                type : Number,
-                required : [true, "Number of clothes washed is required"],
-                min : [0, "Number of clothes washed must be a positive number"]
-            },
-            date : {
-                type : Date,
-                default : Date.now,
-                required : [true, "Date of service is required"],
-            },
-            pickedUpWhen : {
-                type : Date,
-                required : [true, "Pick-up date is required"]
-            }
+            type : Schema.Types.ObjectId,
+            ref : "Order",
+            required : true
         }
     ],
     refreshToken : {
