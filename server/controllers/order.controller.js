@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler";
 import { User } from "../models/user.model.js";
+import sendEmail from "../utils/sendEmail.js";
 
 
 const addNewOrder = asyncHandler(async(req, res, next) => {
@@ -30,6 +31,17 @@ const addNewOrder = asyncHandler(async(req, res, next) => {
             {$push : {history : order._id}},
             {new : true, useFindAndModify : false}
         )
+
+        const userEmail = user.email;
+
+        const subject = "Order confirmation Mail";
+        const msg = "Your Order has been successfully placed";
+
+        try {
+            await sendEmail(userEmail, subject, msg);
+        } catch (err) {
+            console.error("Failed to send Order confirmation emaik : ",err.message);
+        }
 
         return res.status(201)
         .json(
@@ -61,9 +73,22 @@ const updateOrderStatus = asyncHandler(async(req, res, next) => {
             {new : true, useFindAndModify : false}
         );
 
+        const user = await User.findById(updatedOrder.user);
+        
+        const userEmail = user.email;
+        const subject = "Laundary Order Status Updated";
+        const msg = `Your Order status is updated to ${status}`;
+
+        try {
+            await sendEmail(userEmail, subject, msg);
+        } catch (err) {
+            console.error("Error occurred while sending status update email : ", err.message);
+        }
+
         if(!updatedOrder){
             throw new ApiError(400, "Order not found or could not be updated");
         }
+
 
         return res.status(200)
         .json(new ApiResponse(200, updatedOrder, "Order status update successfully"));
