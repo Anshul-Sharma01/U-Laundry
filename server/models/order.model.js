@@ -7,11 +7,6 @@ const orderSchema = new Schema({
         type : Schema.Types.ObjectId,
         ref : "User"
     },
-    moneyPaid : {
-        type : String,
-        required : [true, "Payment amount is required"],
-        ming : [0, "Payment should be a positive number"]
-    },
     totalClothes : {
         type : Number,
         required : [true, "Total number of clothes is required"],
@@ -26,6 +21,21 @@ const orderSchema = new Schema({
         type : String,
         enum : ['Order Placed', 'Pending', 'Prepared','Picked Up','Cancelled'],
         default : 'Order Placed'
+    },
+    moneyAmount : {
+        type : String,
+        required : [true, "Payment amount is required"],
+        min : [0, "Payment should be a positive number"]
+    },
+    moneyPaid : {
+        type : Boolean, 
+        default : false
+    },
+    razorpayOrderId : {
+        type : String
+    },
+    receipt : {
+        type : String, 
     }
 })
 

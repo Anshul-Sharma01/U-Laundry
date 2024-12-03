@@ -5,26 +5,40 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler";
 import { User } from "../models/user.model.js";
 import sendEmail from "../utils/sendEmail.js";
+import {razorpayService} from "../utils/razorpayService.js";
 
 
 const addNewOrder = asyncHandler(async(req, res, next) => {
     try{
-        const { moneyPaid, totalClothes } = req.body;
+        const { moneyAmount, totalClothes, currency} = req.body;
         const userId = req.user._id;
 
-        if(!moneyPaid || !totalClothes){
+        if(!moneyAmount || !totalClothes){
             throw new ApiError(400, 'All fields are mandatory');
         }
 
+        if(!["INR", "USD", "EUR"].includes(currency)){
+            throw new ApiError(400, "Invalid Currency");
+        }
+
+        const receipt = `receipt_${Math.floor(MAth.random() * 100000)}`;
+        const amount = moneyAmount * 100;
+
+        const paymentOrder = await razorpayService.createOrder(amount, currency, receipt);
+
         const order = await Order.create({
-            moneyPaid,
+            moneyAmount : amount,
             totalClothes,
-            user : userId
+            user : userId,
+            razorpayOrderId : paymentOrder.id,
+            receipt
         })
 
         if(!order){
             throw new ApiError(400, "Order not created !!");
         }
+
+
 
         const user = await User.findByIdAndUpdate(
             userId,
@@ -196,7 +210,7 @@ const getAllOrders = asyncHandler(async(req, res, next) => {
 
 const getOrdersByStatus = asyncHandler(async(req, res, next) => {
     try{
-        const { status } = req.user._id;
+        const { status } = req.params;
 
         if(!['Order Placed', 'Pending', 'Prepared', 'Picked Up'].includes(status)){
             throw new ApiError(400, "Invalid status");
