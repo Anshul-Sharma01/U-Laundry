@@ -19,13 +19,13 @@ const orderSchema = new Schema({
     },
     status : {
         type : String,
-        enum : ['Order Placed', 'Pending', 'Prepared','Picked Up','Cancelled'],
-        default : 'Order Placed'
+        enum : ['Order Placed', 'Pending', 'Prepared','Picked Up','Cancelled', 'Payment left'],
+        default : 'Payment left'
     },
-    moneyAmount : {
-        type : String,
-        required : [true, "Payment amount is required"],
-        min : [0, "Payment should be a positive number"]
+    moneyAmount: {
+        type: Number,
+        required: [true, "Payment amount is required"],
+        default : 0,
     },
     moneyPaid : {
         type : Boolean, 

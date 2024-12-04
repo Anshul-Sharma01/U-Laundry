@@ -1,5 +1,11 @@
 import Razorpay from "razorpay";
 
+import { config } from "dotenv";
+config({ path: "./.env" });
+
+
+
+
 class RazorpayService {
     constructor(){
         this.instance = new Razorpay({
@@ -38,6 +44,6 @@ class RazorpayService {
     }
 }
 
-module.exports = new RazorpayService();
+export default new RazorpayService();
 
 

@@ -3,7 +3,8 @@ import morgan from "morgan";
 import cookieParser from "cookie-parser";
 
 import { config } from "dotenv";
-config();
+config({ path: "./.env" });
+
 
 const app = express();
 
@@ -11,7 +12,6 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended : true }));
 app.use(morgan("dev"));
-
 
 
 app.get("/", (req, res) => {

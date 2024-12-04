@@ -1,5 +1,5 @@
-import ApiError from "../utils/ApiError.js";
-import ApiResponse from "../utils/ApiResponse.js";
+import {ApiError} from "../utils/ApiError.js";
+import {ApiResponse} from "../utils/ApiResponse.js";
 import sendEmail from "../utils/sendEmail.js";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
@@ -37,12 +37,12 @@ const registerUser = asyncHandler(async(req, res, next) => {
             throw new ApiError(400, "All fields are mandatory");
         }
 
-        const unameExists = await User.find({ username });
+        const unameExists = await User.findOne({ username });
         if(unameExists){
             throw new ApiError(400, "Username already Exists");
         }
         
-        const emailExists = await User.find({ email });
+        const emailExists = await User.findOne({ email });
         if(emailExists){
             throw new ApiError(400, "Email already Exists");
         }
@@ -83,6 +83,7 @@ const registerUser = asyncHandler(async(req, res, next) => {
         }
 
     }catch(err){
+        console.error(`Error occurred while registering a new user : ${err}`);
         throw new ApiError(400, "Error occurred while registering new user..");
     }
 })

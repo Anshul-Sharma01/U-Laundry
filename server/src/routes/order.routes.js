@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyJWT, verifyModerator, verifyAdmin } from "../middlewares/auth.middleware.js";
-import { addNewOrder, cancelOrder, getAllOrders, getOrderById, getOrdersByStatus, getOrdersByUser, updateOrderStatus } from "../controllers/order.controller.js";
+import { addNewOrder, cancelOrder, getAllOrders, getOrderById, getOrdersByStatus, getOrdersByUser, updateOrderStatus, verifyRazorpaySignature } from "../controllers/order.controller.js";
 
 
 
@@ -10,7 +10,7 @@ import { addNewOrder, cancelOrder, getAllOrders, getOrderById, getOrdersByStatus
 const router = Router();
 
 
-router.use(verifyJWT);
+// router.use(verifyJWT);
 
 
 router.route("/add")
@@ -36,6 +36,8 @@ router.route("/getall")
 router.route("/get/:status")
 .get(verifyModerator, getOrdersByStatus);
 
+router.route("/verify-signature")
+.post(verifyRazorpaySignature);
 
 
 export default router;

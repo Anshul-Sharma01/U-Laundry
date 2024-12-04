@@ -1,11 +1,11 @@
 import { isValidObjectId } from "mongoose";
 import { Order } from "../models/order.model.js";
-import { ApiError } from "../utils/ApiError";
+import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { asyncHandler } from "../utils/asyncHandler";
+import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import sendEmail from "../utils/sendEmail.js";
-import {razorpayService} from "../utils/razorpayService.js";
+import razorpayService from "../utils/razorpayService.js";
 
 
 const addNewOrder = asyncHandler(async(req, res, next) => {
@@ -21,7 +21,7 @@ const addNewOrder = asyncHandler(async(req, res, next) => {
             throw new ApiError(400, "Invalid Currency");
         }
 
-        const receipt = `receipt_${Math.floor(MAth.random() * 100000)}`;
+        const receipt = `receipt_${Math.floor(Math.random() * 100000)}`;
         const amount = moneyAmount * 100;
 
         const paymentOrder = await razorpayService.createOrder(amount, currency, receipt);
@@ -31,7 +31,7 @@ const addNewOrder = asyncHandler(async(req, res, next) => {
             totalClothes,
             user : userId,
             razorpayOrderId : paymentOrder.id,
-            receipt
+            receipt,
         })
 
         if(!order){
@@ -64,6 +64,7 @@ const addNewOrder = asyncHandler(async(req, res, next) => {
 
 
     }catch(err){
+        console.error(`Error occurred while adding a new order : ${err}`);
         throw new ApiError(500, err?.message || "Error occurred while placing new order");
     }
 })
@@ -166,11 +167,12 @@ const cancelOrder = asyncHandler(async( req, res, next) => {
             throw new ApiError(400, "Invalid Order Id");
         }
 
-        const order = await Order.findByIdAndUpdate(
-            { _id : orderId, user : userId, status : 'Order Placed' },
-            { $set : { status : 'Cancelled' } },
-            { new : true, useFindAndModify : false }
+        const order = await Order.findOneAndUpdate(
+            { _id: orderId, user: userId, status: 'Payment left' },
+            { $set: { status: 'Cancelled' } },
+            { new: true, useFindAndModify: false }
         );
+        
 
         if(!order){
             throw new ApiError(400, "Order cannot be cancelled or does not exists");
@@ -211,17 +213,19 @@ const getAllOrders = asyncHandler(async(req, res, next) => {
 const getOrdersByStatus = asyncHandler(async(req, res, next) => {
     try{
         const { status } = req.params;
+        const VALID_STATUSES = ['Order Placed', 'Pending', 'Prepared', 'Picked Up', 'Cancelled', 'Payment left'];
 
-        if(!['Order Placed', 'Pending', 'Prepared', 'Picked Up'].includes(status)){
-            throw new ApiError(400, "Invalid status");
+        if (!VALID_STATUSES.includes(status)) {
+            throw new ApiError(400, "Invalid Status");
         }
+        
 
         const orders = await Order.find({ status });
 
         if(!orders){
             return res.status(200)
             .json(
-                new ApiResponse(200, orders, "No Orders Exists for the required status")
+                new ApiResponse(200, orders, "No orders exist for the given status.")
             );
         }
 
@@ -235,7 +239,56 @@ const getOrdersByStatus = asyncHandler(async(req, res, next) => {
     }
 })
 
+const verifyRazorpaySignature = asyncHandler(async ( req, res, next) => {
+    try{
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+        const orderId = req.params.orderId;
 
+
+        const body = razorpay_order_id + "|" + razorpay_payment_id;
+
+        const verification = await razorpayService.verifySignature(body, razorpay_signature);
+
+
+        if(verification){
+
+            const order = await Order.findByIdAndUpdate(
+                orderId,
+                { moneyPaid : true, razorpayOrderId : razorpay_order_id, status: 'Order Placed', },
+                { new : true }
+            )
+
+            return res.status(200)
+            .json(
+                new ApiResponse(
+                    200,
+                    order,
+                    "Payment Signature Verified successfully"
+                )
+            )
+        }else{
+
+            const order = await Order.findByIdAndUpdate(
+                orderId,
+                { moneyPaid : false },
+                { new : true }
+            )
+
+            return res.status(200)
+            .json(
+                new ApiResponse(
+                    200,
+                    order,
+                    "Payment Signature Invalid"
+                )
+            )
+        }
+
+    }catch(err){
+        console.error(`Error occurred while verifying razorpay payment signature : ${err}`);
+        throw new ApiError(400, err?.message || "Error occurred while verifying razorpay payment signature !!");
+    }
+})
 
 
 export {
@@ -245,6 +298,7 @@ export {
     getOrdersByUser,
     cancelOrder,
     getAllOrders,
-    getOrdersByStatus
+    getOrdersByStatus,
+    verifyRazorpaySignature
 }
 
