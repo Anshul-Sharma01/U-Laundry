@@ -1,19 +1,23 @@
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-
+import jwt from "jsonwebtoken";
 
 
 
 export const verifyJWT = asyncHandler( async (req, _, next) => {
     try{
         const token = req.cookies?.accessToken || req.header('Authorization')?.replace("Bearer", " ");
-        
-        if(!token){
-            throw new ApiError(401, "Unauthorized request");
-        }
 
+        // console.log("Token from frontend : ", token);
+
+        if(!token){
+            throw new ApiError(403, "Unauthorized request");
+        }
+        
         const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+
+        // console.log("Decoded token : ", decodedToken);
 
         const user = await User.findById(decodedToken?._id);
 
@@ -25,25 +29,12 @@ export const verifyJWT = asyncHandler( async (req, _, next) => {
         next();
 
     }catch(err){
+        console.error(`Error occurred while verifying jwt : ${err}`);
         throw new ApiError(401, err?.message || "Invalid access Token");
     }
 })
 
 
-export const verifyAdmin = asyncHandler(async ( req, _, next) => {
-    try{
-        const { user } = req;
-
-        if(!user || user.role !== 'admin'){
-            throw new ApiError(403, "Access Forbidden");
-        } 
-
-        next();
-
-    }catch(err){
-        throw new ApiError(403, err?.message || "Access to this particular route is forbidden");
-    }
-})
 
 
 export const verifyModerator = asyncHandler(async(req, _ , next) => {

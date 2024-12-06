@@ -25,6 +25,7 @@ const addNewOrder = asyncHandler(async(req, res, next) => {
         const amount = moneyAmount * 100;
 
         const paymentOrder = await razorpayService.createOrder(amount, currency, receipt);
+        // console.log("PaymentOrder : ", paymentOrder);
 
         const order = await Order.create({
             moneyAmount : amount,

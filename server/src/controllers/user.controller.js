@@ -25,6 +25,7 @@ const generateAccessAndRefreshTokens = async(userId) => {
         await user.save({ validateBeforeSave : false });
         return { accessToken, refreshToken };
     }catch(err){
+        console.error(`Error occurred while generating refresha nd access token : ${err}`);
         throw new ApiError(500, "Something went wrong while generating Access and Refresh Tokens");
     }
 }
@@ -49,6 +50,7 @@ const registerUser = asyncHandler(async(req, res, next) => {
 
         if(req.file){
             const localFilePath = req.file?.path;
+            console.log("req-file : ", req.file );
             const avatar = await uploadOnCloudinary(localFilePath);
             
             if(!avatar){
@@ -71,6 +73,7 @@ const registerUser = asyncHandler(async(req, res, next) => {
             })
 
             if(!user){
+                await deleteFromCloudinary(avatar?.public_id);
                 throw new ApiError(400, 'User not registered !!');
             }
 
@@ -96,7 +99,7 @@ const loginUser = asyncHandler(async(req, res, next) => {
             throw new ApiError(400, "All fields are mandatory");
         }
 
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email }).select("+password");
         if(!user){
             throw new ApiError(400, "User does not exists");
         }
@@ -117,6 +120,7 @@ const loginUser = asyncHandler(async(req, res, next) => {
         );
 
     }catch(err){
+        console.error(`Error occurred while logging in user : ${err}`);
         throw new ApiError(400, "Error occurred while logging in user");
     }
 })
