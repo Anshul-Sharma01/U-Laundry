@@ -3,6 +3,7 @@ import { Order } from "./order.model.js";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import { type } from "os";
 
 const userSchema = new Schema({
     username : {
@@ -11,6 +12,11 @@ const userSchema = new Schema({
         unique : [true, "Username must be unique"],
         minLength : [10, "Username must be of atleast 10 characters"],
         trim : true
+    },
+    studentId : {
+        type : Number,
+        required : [true, "Student-Id is required"],
+        unique : [true, "Student Id must be unique"]
     },
     name : {
         type : String,
