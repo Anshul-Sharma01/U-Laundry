@@ -36,7 +36,7 @@ router.route("/reset/:resetToken")
 router.route("/change-password")
 .patch(verifyJWT, changePassword);
 
-router.route("/refreh-token")
+router.route("/refresh-token")
 .post(refreshAccessToken);
 
 
@@ -45,7 +45,7 @@ router.route("/update")
 .patch(verifyJWT, updateUserDetails);
 
 router.route("/update-avatar")
-.patch(verifyJWT, updateUserAvatar);
+.patch(verifyJWT, upload.single("avatar"), updateUserAvatar);
 
 
 // admin routes

@@ -9,6 +9,12 @@ const initialState = {
     userData : JSON.parse(localStorage.getItem("userData")) !== undefined ? JSON.parse(localStorage.getItem("userData")) : {},
 }
 
+const updateLocalStorage = (user) => {
+    localStorage.setItem("userData", JSON.stringify(user));
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("userRole", user?.role);
+}
+
 
 export const registerUserThunk = createAsyncThunk("/auth/sign-in", async (data) => {
     try {
@@ -51,11 +57,114 @@ export const getProfileThunk = createAsyncThunk("/user/me", async() => {
     }
 })
 
+export const resetPasswordThunk = createAsyncThunk("/auth/reset", async(data) => {
+    try{
+        const res = axiosInstance.patch(`users/reset`, data);
+        toastHandler(res, 'wait for a moment...', `Successfully sent email to ${email}`, "Failed to sent the email");
+        return (await res).data;
+    }catch(err){
+        console.error(`Error occurred while resetting password : ${err}`);
+    }
+})
+
+export const resetPasswordTokenThunk = createAsyncThunk("/auth/reset/:resetToken", async(data) => {
+    try{
+        const res = axiosInstance.patch(`users/reset/${data.resetToken}`, data);
+        toastHandler(res, "updating your password", "password updated successfully", "failed to reset the password");
+        return (await res).data;
+    }catch(err){
+        console.error(`Error occurred while resetting password : ${err}`);
+    }
+})
+
+export const changePasswordThunk = createAsyncThunk("/auth/change-password", async(data) => {
+    try {
+        const res = axiosInstance.patch("users/change-password", data);
+        toastHandler(res, "changing your password...", "password changed successfully", "failed to change the password");
+        return (await res).data;
+    } catch (err) {
+        console.error(`Error occurred while changing password : ${err}`);
+    }
+})
+
+export const updateUserDetailsThunk = createAsyncThunk("/user/update-details", async(data) => {
+    try{
+        const res = axiosInstance.patch("users/update", data);
+        toastHandler(res, "updating profile details", "successfully updated profile ", "failed to update the profile");
+        return (await res).data;
+    }catch(err){
+        console.error(`Error occurred while updating user details : ${err}`);
+    }
+})
+
+export const updateUserAvatarThunk = createAsyncThunk("/user/update-avatar", async(data) => {
+    try{
+        const res = axiosInstance.patch("users/update-avatar", data);
+        toastHandler(res, "updating avatar...", "avatar updated successfully", "failed to update avatar");
+        return (await res).data;
+    }catch(err){
+        console.error(`Error occurred while updating user Avatar : ${err}`);
+    }
+})
+
 
 const authSlice = createSlice({
     name : 'auth',
     initialState,
-    reducers : {}
+    reducers : {},
+    extraReducers : (builder) => {
+        builder
+            .addCase(registerUserThunk.fulfilled, (state, action) => {
+                if(action?.payload?.statusCode === 201){
+                    const user = action?.payload?.data?.user;
+                    updateLocalStorage(user);
+                    state.isLoggedIn = true;
+                    state.userData = user;
+                    state.userRole = user?.role || "";
+                }
+            })
+            .addCase(registerUserThunk.rejected, (state, action) => {
+                localStorage.clear();
+                state.userData = {},
+                state.isLoggedIn = false;
+                state.userRole = "";
+            })
+            .addCase(authenticateUserThunk.fulfilled, (state, action) => {
+                if(action?.payload?.statusCode === 200){
+                    const user = action?.payload?.data?.user;
+                    updateLocalStorage(user);
+                    state.isLoggedIn = true;
+                    state.userData = user;
+                    state.userRole = user?.role;
+                }
+            })
+            .addCase(authenticateUserThunk.rejected, (state, action) => {
+                localStorage.clear();
+                state.userData = {},
+                state.isLoggedIn = false;
+                state.userRole = "";
+            })
+            .addCase(logoutUserThunk.fulfilled, (state, action) => {
+                if(action?.payload?.statusCode === 200){
+                    localStorage.clear();
+                    state.isLoggedIn = false;
+                    state.userData = {};
+                    state.userRole = "";
+                }
+            })
+            .addCase(updateUserDetailsThunk.fulfilled, (state, action) => {
+                if(action?.payload?.statusCode === 200){
+                    localStorage.setItem("userData", JSON.stringify(action?.payload?.data));
+                    state.userData = action?.payload?.data;
+                }
+            })
+            .addCase(updateUserAvatarThunk.fulfilled, (state, action) => {
+                if(action?.payload?.statusCode === 200){
+                    localStorage.setItem("userData", JSON.stringify(action?.payload?.data));
+                    state.userData = action?.payload?.data;
+                }
+            })
+    }
 })
 
 export default authSlice.reducer;
