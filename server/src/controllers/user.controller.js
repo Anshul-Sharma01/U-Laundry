@@ -531,6 +531,7 @@ export {
     registerUser,
     loginUser,
     verifyVerificationCode,
+    requestNewVerificationCode,
     logout,
     getProfile,
     forgotPassword,

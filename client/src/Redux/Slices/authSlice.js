@@ -37,6 +37,27 @@ export const authenticateUserThunk = createAsyncThunk("/auth/sing-in", async (da
     }
 })
 
+export const verifyCodeThunk = createAsyncThunk("/auth/verify-code", async (data) => {
+    try{
+        const res = axiosInstance.post("users/verify-code", data);
+        toastHandler(res, "Verifying OTP", "Successfully LoggedIn", "Failed to verify code, please try again ");
+        return (await res).data;
+    }catch(err){
+        console.error(`Error occurred while verifying verification code : ${err}`);
+    }
+})
+
+export const requestNewVerificationCodeThunk = createAsyncThunk("/auth/request-new-code", async (data) => {
+    try{
+        const res = axiosInstance.post("users/request-new-code");
+        toastHandler(res, "Requesting new verification code...", "Successfully sent the new verification code", "Failed to request for new verification code");
+        return (await res).data;
+    }catch(err){
+        console.error(`Error occurred while requesting new verification code : ${err}`);    
+    }
+})
+
+
 export const logoutUserThunk = createAsyncThunk("/auth/logout", async () => {
     try{
         const res = axiosInstance.post("users/logout");
@@ -129,7 +150,7 @@ const authSlice = createSlice({
                 state.isLoggedIn = false;
                 state.userRole = "";
             })
-            .addCase(authenticateUserThunk.fulfilled, (state, action) => {
+            .addCase(verifyCodeThunk.fulfilled, (state, action) => {
                 if(action?.payload?.statusCode === 200){
                     const user = action?.payload?.data?.user;
                     updateLocalStorage(user);
@@ -138,7 +159,7 @@ const authSlice = createSlice({
                     state.userRole = user?.role;
                 }
             })
-            .addCase(authenticateUserThunk.rejected, (state, action) => {
+            .addCase(verifyCodeThunk.rejected, (state, action) => {
                 localStorage.clear();
                 state.userData = {},
                 state.isLoggedIn = false;
