@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
-import { changePassword, deleteUser, forgotPassword, getAllUsers, getProfile, loginUser, logout, refreshAccessToken, registerUser, resetPassword, updateUserAvatar, updateUserDetails } from "../controllers/user.controller.js";
+import { changePassword, deleteUser, forgotPassword, getAllUsers, getProfile, loginUser, logout, refreshAccessToken, registerUser, resetPassword, updateUserAvatar, updateUserDetails, verifyVerificationCode } from "../controllers/user.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js"
 
 
@@ -18,6 +18,9 @@ router
 // User-authentication routes
 router.route("/login")
 .post(loginUser);
+
+router.route("/verify-code")
+.post(verifyVerificationCode);
 
 router.route("/logout")
 .post(verifyJWT, logout);

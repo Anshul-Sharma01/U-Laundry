@@ -80,6 +80,9 @@ const userSchema = new Schema({
         type : String,
         select : false
     },
+    verifyCode : {
+        type : Number,
+    },
     forgotPasswordToken : String,
     forgotPasswordExpiry : Date,
     

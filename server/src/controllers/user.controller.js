@@ -15,6 +15,10 @@ const cookieOptions = {
     httpOnly : true
 }
 
+const generateVerificationCode = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
 
 const generateAccessAndRefreshTokens = async(userId) => {
     try{
@@ -38,15 +42,11 @@ const registerUser = asyncHandler(async(req, res, next) => {
             throw new ApiError(400, "All fields are mandatory");
         }
 
-        const unameExists = await User.findOne({ username });
-        if(unameExists){
-            throw new ApiError(400, "Username already Exists");
+        const existingUser = await User.findOne({ $or: [{ username }, { email }] });
+        if (existingUser) {
+            throw new ApiError(400, existingUser.email === email ? "Email already exists" : "Username already exists");
         }
-        
-        const emailExists = await User.findOne({ email });
-        if(emailExists){
-            throw new ApiError(400, "Email already Exists");
-        }
+
 
         if(req.file){
             const localFilePath = req.file?.path;
@@ -110,18 +110,99 @@ const loginUser = asyncHandler(async(req, res, next) => {
             throw new ApiError(400, "Password is not correct");
         }
 
-        const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+        const verificationCode = generateVerificationCode();
+        user.verifyCode = verificationCode;
 
-        return res.status(200)
-        .cookie("accessToken", accessToken, cookieOptions)
-        .cookie("refreshToken", refreshToken, cookieOptions)
-        .json(
-            new ApiResponse(200, { user, refreshToken, accessToken }, "User logged in successfully")
-        );
+        await sendEmail(
+            user.email,
+            "U-Laundry Login OTP",
+            `<p>Your verification code is <strong>${verificationCode}</strong>. Please enter it to verify your account.</p>`
+        )
+
+        await user.save();
+
 
     }catch(err){
         console.error(`Error occurred while logging in user : ${err}`);
         throw new ApiError(400, "Error occurred while logging in user");
+    }
+})
+
+const verifyVerificationCode = asyncHandler(async(req, res, next) => {
+    try{
+        const { verifyCode, identifier } = req.body;
+        const user = await User.findOne({
+            $or : [{studentId : identifier}, {email : identifier}],
+        })
+
+        if(!user){
+            throw new ApiError("Request User does not exists !!");
+        }
+
+        if(user.verifyCode == verifyCode){
+
+            user.verifyCode = null;
+        
+            const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+
+            return res.status(200)
+            .cookie("accessToken", accessToken, cookieOptions)
+            .cookie("refreshToken", refreshToken, cookieOptions)
+            .json(
+                new ApiResponse(200, { user, refreshToken, accessToken }, "User logged in successfully")
+            );
+        }
+        return res.status(400)
+        .json(
+            new ApiResponse(
+                400,
+                {},
+                "Invalid Verification code"
+            )
+        )
+        
+    }catch(err){
+        console.error(`Error occurred while verifying verification code : ${err}`);
+        throw new ApiError(400, err?.message || "Error occurred while verifying verification code !!");
+    }
+})
+
+const requestNewVerificationCode = asyncHandler(async(req, res, next) => {
+    try{
+        const { identifier } = req.body;
+        const user = await User.findOne({
+            $or : [
+                {studentId : identifier},
+                {email : identifier}
+            ]
+        });
+
+        if(!user){
+            throw new ApiError(400, "User does not exists");
+        }
+
+        const newVerificationCode = generateVerificationCode();
+        user.verifyCode = newVerificationCode;
+        await sendEmail(
+            user.email,
+            "U-Laundry New Verification Code",
+            `<p>Your new verification code is <strong>${newVerificationCode}</strong>. Please enter it to verify your account.</p>`
+        );
+
+        await user.save();
+
+        return res.status(200)
+        .json(
+            new ApiResponse(
+                200,
+                {},
+                "New Verification code sent successfully"
+            )
+        )
+
+    }catch(err){
+        console.error(`Error occurred while requesting new verification code : ${err}`);
+        throw new ApiError(400, err?.message || "Error occurred while requesting new verification code !!");
     }
 })
 
@@ -130,8 +211,8 @@ const logout = asyncHandler(async (req, res, next) => {
         await User.findByIdAndUpdate(
             req.user._id,
             {
-                $unset : {
-                    refreshToken : undefined
+                $set : {
+                    refreshToken : null
                 }
             },
             {
@@ -399,6 +480,8 @@ const refreshAccessToken = asyncHandler(async(req, res, next) => {
     }
 })
 
+
+
 const getAllUsers = asyncHandler(async (req, res, next) => {
     try{
         const users = await User.find({});
@@ -447,6 +530,7 @@ const deleteUser = asyncHandler(async (req, res, next) => {
 export {
     registerUser,
     loginUser,
+    verifyVerificationCode,
     logout,
     getProfile,
     forgotPassword,
