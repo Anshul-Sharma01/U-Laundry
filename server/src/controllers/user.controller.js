@@ -113,6 +113,7 @@ const loginUser = asyncHandler(async(req, res, next) => {
 
         const verificationCode = generateVerificationCode();
         user.verifyCode = verificationCode;
+        user.verifyCodeExpiry = Date.now() + 2 * 60 * 1000; //code expiry is set to 2 minutes from now
 
         await sendEmail(
             user.email,
@@ -146,11 +147,15 @@ const verifyVerificationCode = asyncHandler(async(req, res, next) => {
             throw new ApiError("Request User does not exists !!");
         }
 
-        if(user.verifyCode == verifyCode){
+        if(user.verifyCode === verifyCode && user.verifyCodeExpiry > Date.now()){
 
             user.verifyCode = null;
+            user.verifyCodeExpiry = null;
+
         
             const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+
+            await user.save({ validateBeforeSave : false });
 
             return res.status(200)
             .cookie("accessToken", accessToken, cookieOptions)
@@ -164,7 +169,7 @@ const verifyVerificationCode = asyncHandler(async(req, res, next) => {
             new ApiResponse(
                 400,
                 {},
-                "Invalid Verification code"
+                "Invalid or expired Verification code"
             )
         )
         
@@ -185,13 +190,15 @@ const requestNewVerificationCode = asyncHandler(async(req, res, next) => {
 
         const newVerificationCode = generateVerificationCode();
         user.verifyCode = newVerificationCode;
+        user.verifyCodeExpiry = Date.now() + 2 * 60 * 1000;
+
         await sendEmail(
             user.email,
             "U-Laundry New Verification Code",
             `<p>Your new verification code is <strong>${newVerificationCode}</strong>. Please enter it to verify your account.</p>`
         );
 
-        await user.save();
+        await user.save({ validateBeforeSave : false });
 
         return res.status(200)
         .json(
@@ -223,8 +230,8 @@ const logout = asyncHandler(async (req, res, next) => {
         )
 
         return res.status(200)
-        .clearCookie("accessToken", cookieOptions)
-        .clearCookie("refreshToken", cookieOptions)
+        .clearCookie("accessToken")
+        .clearCookie("refreshToken")
         .json(
             new ApiResponse(200, {}, "User logged Out successfully")
         );
