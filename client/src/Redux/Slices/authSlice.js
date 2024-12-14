@@ -27,9 +27,10 @@ export const registerUserThunk = createAsyncThunk("/auth/sign-in", async (data) 
 })
 
 
-export const authenticateUserThunk = createAsyncThunk("/auth/sing-in", async (data) => {
+export const authenticateUserThunk = createAsyncThunk("/auth/sing-in", async ({ email, password }) => {
     try{
-        const res = axiosInstance.post("users/login", data);
+        console.log("email", email);
+        const res = axiosInstance.post("users/login", { email, password });
         toastHandler(res, "Authenticating your credentials...", "Logged In Successfully", "Failed to authenticate User");
         return (await res).data;
     }catch(err){

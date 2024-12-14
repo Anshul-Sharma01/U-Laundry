@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { VscRefresh } from "react-icons/vsc";
+import { useLocation } from "react-router-dom";
 
 function VerifyCode() {
   const [otp, setOtp] = useState(new Array(6).fill(""));
   const [timeLeft, setTimeLeft] = useState(60); // 60 seconds countdown timer
   const [isTimerActive, setIsTimerActive] = useState(true);
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const identifier = queryParams.get("identifier");
 
   useEffect(() => {
     let timer;

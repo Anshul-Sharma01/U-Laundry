@@ -1,18 +1,30 @@
 import { useState } from "react";
 import { toast } from "react-hot-toast";
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { authenticateUserThunk } from "../../Redux/Slices/authSlice";
 
 function Signin() {
 
-    const [ studentId, setStudentId ] = useState("");
+    const [ studentEmail, setstudentEmail ] = useState("");
     const [ studentPassword, setStudentPassword ] = useState("");
 
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
 
     const handleFormSubmission = async(e) => {
         toast.dismiss();
         e.preventDefault();
-        if(!studentId || !studentPassword){
+        if(!studentEmail || !studentPassword){
             toast.error("All Fields are mandatory");
             return;
+        }
+
+        const response = await dispatch(authenticateUserThunk({ email : studentEmail, password : studentPassword }))
+        if(response?.payload?.statusCode == 200){
+            setStudentPassword("");
+            setstudentEmail("");
+            navigate(`/auth/verify-code?identifier=${studentEmail}`);
         }
     }
 
@@ -34,14 +46,14 @@ function Signin() {
                                     htmlFor="id-email"
                                     className="text-gray-700 dark:text-gray-300 text-sm font-medium"
                                 >
-                                    Email / Student ID
+                                    Email 
                                 </label>
                                 <input
                                     type="text"
                                     className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     placeholder="Enter your student ID or email"
-                                    value={studentId}
-                                    onChange={(e) => setStudentId(e.target.value)}
+                                    value={studentEmail}
+                                    onChange={(e) => setstudentEmail(e.target.value)}
                                     id="id-email"
                                 />
                             </div>

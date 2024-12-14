@@ -128,6 +128,9 @@ userSchema.methods = {
     },
 
     isPasswordCorrect : async function (password) {
+        if(!password || typeof password !== "string"){
+            throw new Error("Password must be a string !!");
+        }
         return await bcryptjs.compare(password, this.password);
     },
 

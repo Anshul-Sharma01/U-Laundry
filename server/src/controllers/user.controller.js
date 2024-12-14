@@ -94,12 +94,13 @@ const registerUser = asyncHandler(async(req, res, next) => {
 const loginUser = asyncHandler(async(req, res, next) => {
     try{
         const { email, password } = req.body;
+        // console.log("studenntDetails : ", email, password);
 
         if(!email || !password){
             throw new ApiError(400, "All fields are mandatory");
         }
 
-        const user = await User.findOne({ email }).select("+password");
+        const user = await User.findOne({email}).select("+password");
         if(!user){
             throw new ApiError(400, "User does not exists");
         }
@@ -119,7 +120,15 @@ const loginUser = asyncHandler(async(req, res, next) => {
             `<p>Your verification code is <strong>${verificationCode}</strong>. Please enter it to verify your account.</p>`
         )
 
-        await user.save();
+        await user.save({ validateBeforeSave : false });
+        return res.status(200)
+        .json(
+            new ApiResponse(
+                200,
+                {},
+                "User Authenticated Successfully"
+            )
+        )
 
 
     }catch(err){
@@ -130,10 +139,8 @@ const loginUser = asyncHandler(async(req, res, next) => {
 
 const verifyVerificationCode = asyncHandler(async(req, res, next) => {
     try{
-        const { verifyCode, identifier } = req.body;
-        const user = await User.findOne({
-            $or : [{studentId : identifier}, {email : identifier}],
-        })
+        const { verifyCode, email } = req.body;
+        const user = await User.findOne({email});
 
         if(!user){
             throw new ApiError("Request User does not exists !!");
@@ -169,13 +176,8 @@ const verifyVerificationCode = asyncHandler(async(req, res, next) => {
 
 const requestNewVerificationCode = asyncHandler(async(req, res, next) => {
     try{
-        const { identifier } = req.body;
-        const user = await User.findOne({
-            $or : [
-                {studentId : identifier},
-                {email : identifier}
-            ]
-        });
+        const { email } = req.body;
+        const user = await User.findOne({email});
 
         if(!user){
             throw new ApiError(400, "User does not exists");
