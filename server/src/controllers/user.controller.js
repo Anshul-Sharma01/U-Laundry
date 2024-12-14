@@ -152,6 +152,7 @@ const verifyVerificationCode = asyncHandler(async(req, res, next) => {
 
             user.verifyCode = null;
             user.verifyCodeExpiry = null;
+            user.isCodeVerified = true;
 
         
             const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
@@ -165,6 +166,7 @@ const verifyVerificationCode = asyncHandler(async(req, res, next) => {
                 new ApiResponse(200, { user, refreshToken, accessToken }, "User logged in successfully")
             );
         }
+
         
         return res.status(400)
         .json(
@@ -220,7 +222,7 @@ const requestNewVerificationCode = asyncHandler(async(req, res, next) => {
 
 const logout = asyncHandler(async (req, res, next) => {
     try{
-        await User.findByIdAndUpdate(
+        const user = await User.findByIdAndUpdate(
             req.user._id,
             {
                 $set : {
@@ -231,6 +233,9 @@ const logout = asyncHandler(async (req, res, next) => {
                 new : true
             }
         )
+
+        user.isCodeVerified = false;
+        await user.save({ validateBeforeSave : false });
 
         return res.status(200)
         .clearCookie("accessToken")

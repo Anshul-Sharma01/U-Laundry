@@ -86,6 +86,10 @@ const userSchema = new Schema({
     verifyCodeExpiry : {
         type : Date
     },
+    isCodeVerified : {
+        type : Boolean,
+        default : false
+    },
     forgotPasswordToken : String,
     forgotPasswordExpiry : Date,
     

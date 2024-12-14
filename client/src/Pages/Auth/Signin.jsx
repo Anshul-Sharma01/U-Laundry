@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { authenticateUserThunk } from "../../Redux/Slices/authSlice";
 
@@ -11,6 +11,10 @@ function Signin() {
 
     const dispatch = useDispatch();
     const navigate = useNavigate();
+
+    const isLoggedIn = useSelector((state) => state?.auth?.isLoggedIn);
+    
+
 
     const handleFormSubmission = async(e) => {
         toast.dismiss();
@@ -27,6 +31,12 @@ function Signin() {
             navigate(`/auth/verify-code?identifier=${studentEmail}`);
         }
     }
+
+    useEffect(() => {
+        if(isLoggedIn){
+            navigate("/");
+        }
+    }, [ isLoggedIn, navigate ])
 
 
     return (

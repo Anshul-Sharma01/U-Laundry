@@ -1,5 +1,4 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import toast from "react-hot-toast";
 import axiosInstance from "../../Helpers/axiosInstance.js";
 import { toastHandler  } from "../../Helpers/toastHandler.js";
 
@@ -7,12 +6,14 @@ const initialState = {
     isLoggedIn : localStorage.getItem("isLoggedIn") === "true",
     userRole : localStorage.getItem("userRole") !== undefined ? localStorage.getItem("userRole") : "",
     userData : JSON.parse(localStorage.getItem("userData")) !== undefined ? JSON.parse(localStorage.getItem("userData")) : {},
+    isCodeVerified : localStorage.getItem("isCodeVerified") || false
 }
 
 const updateLocalStorage = (user) => {
     localStorage.setItem("userData", JSON.stringify(user));
     localStorage.setItem("isLoggedIn", "true");
-    localStorage.setItem("userRole", user?.role);
+    localStorage.setItem("userRole", user?.role || "");
+    localStorage.setItem("isCodeVerified", user?.isCodeVerified);
 }
 
 
@@ -151,6 +152,7 @@ const authSlice = createSlice({
                     state.isLoggedIn = true;
                     state.userData = user;
                     state.userRole = user?.role || "";
+                    state.isCodeVerified = user?.isCodeVerified || false
                 }
             })
             .addCase(registerUserThunk.rejected, (state, action) => {
@@ -158,6 +160,7 @@ const authSlice = createSlice({
                 state.userData = {},
                 state.isLoggedIn = false;
                 state.userRole = "";
+                state.isCodeVerified = false;
             })
             .addCase(verifyCodeThunk.fulfilled, (state, action) => {
                 if(action?.payload?.statusCode === 200){
@@ -166,6 +169,7 @@ const authSlice = createSlice({
                     state.isLoggedIn = true;
                     state.userData = user;
                     state.userRole = user?.role;
+                    state.isCodeVerified = user?.isCodeVerified || true;
                 }
             })
             .addCase(verifyCodeThunk.rejected, (state, action) => {
@@ -173,6 +177,7 @@ const authSlice = createSlice({
                 state.userData = {},
                 state.isLoggedIn = false;
                 state.userRole = "";
+                state.isCodeVerified = false
             })
             .addCase(logoutUserThunk.fulfilled, (state, action) => {
                 if(action?.payload?.statusCode === 200){
@@ -180,6 +185,7 @@ const authSlice = createSlice({
                     state.isLoggedIn = false;
                     state.userData = {};
                     state.userRole = "";
+                    state.isCodeVerified = false
                 }
             })
             .addCase(updateUserDetailsThunk.fulfilled, (state, action) => {
