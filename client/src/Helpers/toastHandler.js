@@ -4,6 +4,6 @@ export const toastHandler = (promise, loadingMsg, successMsg, errorMsg) => {
     return toast.promise(promise,{
         loading : loadingMsg,
         success : (data) => data?.data?.message || successMsg,
-        error : errorMsg
+        error: (error) => error?.response?.data?.message || errorMsg
     });
 }

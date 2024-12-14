@@ -141,6 +141,7 @@ const loginUser = asyncHandler(async(req, res, next) => {
 const verifyVerificationCode = asyncHandler(async(req, res, next) => {
     try{
         const { verifyCode, email } = req.body;
+        // console.log("Verifycode : ", verifyCode, email);
         const user = await User.findOne({email});
 
         if(!user){
@@ -164,6 +165,7 @@ const verifyVerificationCode = asyncHandler(async(req, res, next) => {
                 new ApiResponse(200, { user, refreshToken, accessToken }, "User logged in successfully")
             );
         }
+        
         return res.status(400)
         .json(
             new ApiResponse(
@@ -182,6 +184,7 @@ const verifyVerificationCode = asyncHandler(async(req, res, next) => {
 const requestNewVerificationCode = asyncHandler(async(req, res, next) => {
     try{
         const { email } = req.body;
+        // console.log("Email : ", email);
         const user = await User.findOne({email});
 
         if(!user){

@@ -38,19 +38,27 @@ export const authenticateUserThunk = createAsyncThunk("/auth/sing-in", async ({ 
     }
 })
 
-export const verifyCodeThunk = createAsyncThunk("/auth/verify-code", async (data) => {
-    try{
-        const res = axiosInstance.post("users/verify-code", data);
-        toastHandler(res, "Verifying OTP", "Successfully LoggedIn", "Failed to verify code, please try again ");
+export const verifyCodeThunk = createAsyncThunk("/auth/verify-code", async ({ email, verifyCode }) => {
+    try {
+        const res =  axiosInstance.post("users/verify-code", { email, verifyCode });
+        toastHandler(res, "Verifying OTP", "Successfully LoggedIn", "Failed to verify code, please try again");
+        console.log((await res));
         return (await res).data;
-    }catch(err){
-        console.error(`Error occurred while verifying verification code : ${err}`);
+    } catch (err) {
+        console.error(`Error occurred while verifying verification code: ${err}`);
+        // console.log("Error occurred : ", err);
+        // if (err.response) {
+        //     throw new Error(err.response.data.message || "Failed to verify code, please try again");
+        // } else {
+        //     throw new Error("An unexpected error occurred");
+        // }
     }
-})
+});
 
-export const requestNewVerificationCodeThunk = createAsyncThunk("/auth/request-new-code", async (data) => {
+export const requestNewVerificationCodeThunk = createAsyncThunk("/auth/request-new-code", async ({ email }) => {
     try{
-        const res = axiosInstance.post("users/request-new-code");
+        // console.log("email :-- ", email);
+        const res = axiosInstance.post("users/request-new-code", {email});
         toastHandler(res, "Requesting new verification code...", "Successfully sent the new verification code", "Failed to request for new verification code");
         return (await res).data;
     }catch(err){
