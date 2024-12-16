@@ -75,7 +75,7 @@ axiosInstance.interceptors.response.use(
             Cookies.remove('accessToken');
             Cookies.remove('refreshToken');
             console.log("Redirected ...");
-            window.location.href = import.meta.env.VITE_LOGIN_URL;
+            window.location.href = "/auth/sign-in";
         }
         return Promise.reject(error);
     }
