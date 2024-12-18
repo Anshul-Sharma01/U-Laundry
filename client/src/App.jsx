@@ -4,6 +4,7 @@ import HomePage from "./Pages/HomePage.jsx";
 import Signin from './Pages/Auth/Signin.jsx';
 import VerifyCode from './Pages/Auth/VerifyCode.jsx';
 import Denied from './Pages/Denied.jsx';
+import NotFound from './Pages/Notfound.jsx';
 
 function App() {
 
@@ -14,8 +15,8 @@ function App() {
       <Route path='/auth/verify-code' element={<VerifyCode/>} />
 
 
-
-      <Route path='*' element={<Denied/>} ></Route>
+      <Route path='/denied' element={<Denied/>} ></Route>
+      <Route path='*' element={<NotFound/>} ></Route>
     </Routes>
   )
 }
