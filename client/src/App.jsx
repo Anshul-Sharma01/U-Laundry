@@ -5,6 +5,7 @@ import Signin from './Pages/Auth/Signin.jsx';
 import VerifyCode from './Pages/Auth/VerifyCode.jsx';
 import Denied from './Pages/Denied.jsx';
 import NotFound from './Pages/Notfound.jsx';
+import ChangePassword from './Pages/Profile/ChangePassword.jsx';
 
 function App() {
 
@@ -13,6 +14,7 @@ function App() {
       <Route path='/'  element={<HomePage />} />
       <Route path='/auth/sign-in' element={<Signin/>} />
       <Route path='/auth/verify-code' element={<VerifyCode/>} />
+      <Route path='/auth/change-password' element={<ChangePassword/>}></Route>
 
 
       <Route path='/denied' element={<Denied/>} ></Route>
