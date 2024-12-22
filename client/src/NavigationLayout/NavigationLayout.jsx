@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { RxAvatar } from "react-icons/rx";
+import ThemeToggle from "../Components/Theme/ThemeToggle.jsx";
 
 function NavigationLayout({ children }) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -33,10 +34,14 @@ function NavigationLayout({ children }) {
                                 My Profile
                             </Link>
                         </li>
+                        <li>
+                            <ThemeToggle/>
+                        </li>
                     </ul>
 
                     {/* Avatar Icon for Mobile */}
-                    <div className="flex items-center md:hidden">
+                    <div className="flex items-center gap-10 md:hidden">
+                        <ThemeToggle/>
                         <button
                             onClick={toggleMobileMenu}
                             className="flex items-center focus:outline-none"
