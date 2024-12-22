@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { authenticateUserThunk } from "../../Redux/Slices/authSlice";
 
 function Signin() {
@@ -50,7 +50,7 @@ function Signin() {
                         </h1>
                     </div>
                     <div className="w-full">
-                        <form onSubmit={handleFormSubmission} className="flex flex-col gap-6 w-[300px]">
+                        <form onSubmit={handleFormSubmission} className="flex flex-col gap-4 w-[300px]">
                             <div className="flex flex-col gap-2">
                                 <label
                                     htmlFor="id-email"
@@ -83,12 +83,15 @@ function Signin() {
                                     onChange={(e) => setStudentPassword(e.target.value)}
                                 />
                             </div>
-                            <button
-                                type="submit"
-                                className="bg-blue-500 w-full px-4 py-2 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-400 transition-colors"
-                            >
-                                Sign In
-                            </button>
+                            <div className="flex flex-col justify-center items-center">
+                                <button
+                                    type="submit"
+                                    className="bg-blue-500 w-full px-4 py-2 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-400 transition-colors"
+                                >
+                                    Sign In
+                                </button>
+                                <Link to="/auth/forgot-password" className="text-blue-600">Forgot Password ? </Link>
+                            </div>
                         </form>
                     </div>
                 </section>

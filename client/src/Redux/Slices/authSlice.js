@@ -88,9 +88,9 @@ export const getProfileThunk = createAsyncThunk("/user/me", async() => {
     }
 })
 
-export const resetPasswordThunk = createAsyncThunk("/auth/reset", async(data) => {
+export const resetPasswordThunk = createAsyncThunk("/auth/reset", async({email}) => {
     try{
-        const res = axiosInstance.patch(`users/reset`, data);
+        const res = axiosInstance.patch(`users/reset`, email);
         toastHandler(res, 'wait for a moment...', `Successfully sent email to ${email}`, "Failed to sent the email");
         return (await res).data;
     }catch(err){
