@@ -262,7 +262,7 @@ const getProfile = asyncHandler(async (req, res, next) => {
 
 const forgotPassword = asyncHandler(async (req, res, next) => {
     const { email } = req.body;
-
+    console.log("Email : ", email);
     if(!email){
         throw new ApiError(400, "Email is required");
     }
@@ -272,11 +272,11 @@ const forgotPassword = asyncHandler(async (req, res, next) => {
         throw new ApiError(400, "Email not registered");
     }
 
-    const resetToken = await User.generatePasswordResetToken();
+    const resetToken = await user.generatePasswordResetToken();
 
-    await user.save();
+    await user.save({validateBeforeSave : false});
 
-    const resetPasswordURL = `${process.env.FRONTEND_URL}/reset/${resetToken}`;
+    const resetPasswordURL = `${process.env.FRONTEND_URL}/auth/reset-password/${resetToken}`;
 
     const subject = "Reset Password Token";
     const message = `<p style="font-family: Arial, sans-serif; color: #333; font-size: 16px;">
@@ -311,8 +311,8 @@ const forgotPassword = asyncHandler(async (req, res, next) => {
         user.forgotPasswordExpiry = undefined;
         user.forgotPasswordToken = undefined;
 
-        await user.save();
-
+        await user.save({validateBeforeSave : false});
+        console.logo(`Error occurred while forgetting password : ${err}`);
         throw new ApiError(400, err?.message || "Error occurred while sending Reset Token");
     }
 })
@@ -336,13 +336,14 @@ const resetPassword = asyncHandler(async (req, res, next) => {
         user.password = password;
         user.forgotPasswordExpiry = undefined;
         user.forgotPasswordToken = undefined;
-        await user.save();
+        await user.save({ validateBeforeSave : false });
 
         return res.status(200).json(
             new ApiResponse(200, {}, "Password changed successfully")
         );
 
     }catch(err){
+        console.log(`Error occurred while resetting password token : ${err}`);
         throw new ApiError(400, "Error occurred in updating new password");
     }
 })

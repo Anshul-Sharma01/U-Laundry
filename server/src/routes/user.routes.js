@@ -34,7 +34,7 @@ router.route("/me")
 
 // Password updation routes 
 router.route("/reset")
-.patch( forgotPassword);
+.patch(forgotPassword);
 
 router.route("/reset/:resetToken")
 .patch(resetPassword);

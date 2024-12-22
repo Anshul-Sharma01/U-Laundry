@@ -2,12 +2,13 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { resetPasswordThunk } from "../../Redux/Slices/authSlice";
+import { useNavigate } from "react-router-dom";
 
 function ForgotPassword() {
     const [email, setEmail] = useState("");
 
     const dispatch = useDispatch();
-
+    const navigate = useNavigate();
 
     const handleSubmit = async(e) => {
         e.preventDefault();
@@ -24,7 +25,8 @@ function ForgotPassword() {
         }
 
         const res = await dispatch(resetPasswordThunk({ email }));
-        console.log("Res  : ", res);
+        // console.log("Res  : ", res);
+        navigate("/auth/sign-in");
     };
 
     return (

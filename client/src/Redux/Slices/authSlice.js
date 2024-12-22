@@ -90,7 +90,7 @@ export const getProfileThunk = createAsyncThunk("/user/me", async() => {
 
 export const resetPasswordThunk = createAsyncThunk("/auth/reset", async({email}) => {
     try{
-        const res = axiosInstance.patch(`users/reset`, email);
+        const res = axiosInstance.patch(`users/reset`, {email});
         toastHandler(res, 'wait for a moment...', `Successfully sent email to ${email}`, "Failed to sent the email");
         return (await res).data;
     }catch(err){
@@ -98,9 +98,9 @@ export const resetPasswordThunk = createAsyncThunk("/auth/reset", async({email})
     }
 })
 
-export const resetPasswordTokenThunk = createAsyncThunk("/auth/reset/:resetToken", async(data) => {
+export const resetPasswordTokenThunk = createAsyncThunk("/auth/reset/:resetToken", async({ resetToken, password }) => {
     try{
-        const res = axiosInstance.patch(`users/reset/${data.resetToken}`, data);
+        const res = axiosInstance.patch(`users/reset/${resetToken}`, { resetToken, password});
         toastHandler(res, "updating your password", "password updated successfully", "failed to reset the password");
         return (await res).data;
     }catch(err){
