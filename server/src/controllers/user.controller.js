@@ -351,6 +351,7 @@ const changePassword = asyncHandler(async(req, res, next) => {
     try{
         const { oldPassword, newPassword } = req.body;
         const userId = req.user._id;
+        // console.log("Passwords :", oldPassword, newPassword);
 
         if(!oldPassword || !newPassword){
             throw new ApiError(400, "All fields are mandatory");
@@ -369,7 +370,7 @@ const changePassword = asyncHandler(async(req, res, next) => {
         }
 
         user.password = newPassword;
-        await user.save();
+        await user.save({ validateBeforeSave : false });
 
         user.password = undefined;
         return res.status(200)
@@ -378,6 +379,7 @@ const changePassword = asyncHandler(async(req, res, next) => {
         );
 
     }catch(err){
+        console.log("Error occurred while changing the password : ", err);
         throw new ApiError(400, "Error occurred while changing the password");
     }
 })

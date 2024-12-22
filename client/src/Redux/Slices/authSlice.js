@@ -108,9 +108,9 @@ export const resetPasswordTokenThunk = createAsyncThunk("/auth/reset/:resetToken
     }
 })
 
-export const changePasswordThunk = createAsyncThunk("/auth/change-password", async(data) => {
+export const changePasswordThunk = createAsyncThunk("/auth/change-password", async({ oldPassword, newPassword }) => {
     try {
-        const res = axiosInstance.patch("users/change-password", data);
+        const res = axiosInstance.patch("users/change-password", { oldPassword, newPassword});
         toastHandler(res, "changing your password...", "password changed successfully", "failed to change the password");
         return (await res).data;
     } catch (err) {
