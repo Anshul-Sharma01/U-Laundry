@@ -30,11 +30,13 @@ export const registerUserThunk = createAsyncThunk("/auth/sign-in", async (data) 
 
 export const authenticateUserThunk = createAsyncThunk("/auth/sing-in", async ({ email, password }) => {
     try{
-        console.log("email", email);
+        // console.log("email", email);
         const res = axiosInstance.post("users/login", { email, password });
         toastHandler(res, "Authenticating your credentials...", "Logged In Successfully", "Failed to authenticate User");
+        console.log((await res));
         return (await res).data;
     }catch(err){
+        console.log("Error : ", err);
         console.error(`Error occurred while authenticating user : ${err}`);
     }
 })
@@ -43,7 +45,7 @@ export const verifyCodeThunk = createAsyncThunk("/auth/verify-code", async ({ em
     try {
         const res =  axiosInstance.post("users/verify-code", { email, verifyCode });
         toastHandler(res, "Verifying OTP", "Successfully LoggedIn", "Failed to verify code, please try again");
-        console.log((await res));
+        // console.log((await res));
         return (await res).data;
     } catch (err) {
         console.error(`Error occurred while verifying verification code: ${err}`);

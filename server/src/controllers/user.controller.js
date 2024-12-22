@@ -102,13 +102,27 @@ const loginUser = asyncHandler(async(req, res, next) => {
 
         const user = await User.findOne({email}).select("+password");
         if(!user){
-            throw new ApiError(400, "User does not exists");
+            return res.status(400)
+            .json(
+                new ApiResponse(
+                    400,
+                    {},
+                    "User does not exists"
+                )
+            )
         }
 
         const isPasswordValid = await user.isPasswordCorrect(password);
 
         if(!isPasswordValid){
-            throw new ApiError(400, "Password is not correct");
+            return res.status(400)
+            .json(
+                new ApiResponse(
+                    400,
+                    {},
+                    "Incorrect Password !!"
+                )
+            )
         }
 
         const verificationCode = generateVerificationCode();
@@ -145,7 +159,7 @@ const verifyVerificationCode = asyncHandler(async(req, res, next) => {
         const user = await User.findOne({email});
 
         if(!user){
-            throw new ApiError("Request User does not exists !!");
+            throw new ApiError("Requested User does not exists !!");
         }
 
         if(user.verifyCode === verifyCode && user.verifyCodeExpiry > Date.now()){
@@ -269,7 +283,14 @@ const forgotPassword = asyncHandler(async (req, res, next) => {
 
     const user = await User.findOne({ email });
     if(!user){
-        throw new ApiError(400, "Email not registered");
+        return res.status(400)
+        .json(
+            new ApiResponse(
+                400,
+                {},
+                "Email not registered"
+            )
+        )
     }
 
     const resetToken = await user.generatePasswordResetToken();
@@ -330,7 +351,14 @@ const resetPassword = asyncHandler(async (req, res, next) => {
         })
 
         if(!user){
-            throw new ApiError(400, "Token is invalid or expired, please try again");
+            return res.status(400)
+            .json(
+                new ApiResponse(
+                    400,
+                    {},
+                    "Token is invalid or expired !!"
+                )
+            )
         }
 
         user.password = password;
@@ -367,7 +395,14 @@ const changePassword = asyncHandler(async(req, res, next) => {
         const isPasswordValid = await user.isPasswordCorrect(oldPassword);
 
         if(!isPasswordValid){
-            throw new ApiError(400, "Invalid Old Password");
+            return res.status(400)
+            .json(
+                new ApiResponse(
+                    400,
+                    {},
+                    "Incorrect old password"
+                )
+            )
         }
 
         user.password = newPassword;
