@@ -30,7 +30,7 @@ function NavigationLayout({ children }) {
                             </Link>
                         </li>
                         <li>
-                            <Link to="/profile" className="hover:text-blue-500 dark:hover:text-blue-300">
+                            <Link to="/user/me" className="hover:text-blue-500 dark:hover:text-blue-300">
                                 My Profile
                             </Link>
                         </li>
@@ -75,7 +75,7 @@ function NavigationLayout({ children }) {
                             </li>
                             <li>
                                 <Link
-                                    to="/profile"
+                                    to="/user/me"
                                     onClick={() => setIsMobileMenuOpen(false)}
                                     className="hover:text-blue-500 dark:hover:text-blue-300"
                                 >
