@@ -156,7 +156,7 @@ const verifyVerificationCode = asyncHandler(async(req, res, next) => {
     try{
         const { verifyCode, email } = req.body;
         // console.log("Verifycode : ", verifyCode, email);
-        const user = await User.findOne({email});
+        const user = await User.findOne({email}).select("+role");
 
         if(!user){
             throw new ApiError("Requested User does not exists !!");
@@ -478,7 +478,7 @@ const updateUserAvatar = asyncHandler(async(req, res, next) => {
                 secure_url : avatar.secure_url
             }
             
-            await user.save();
+            await user.save({validateBeforeSave : false});
 
             return res.status(200)
             .json(
@@ -489,6 +489,7 @@ const updateUserAvatar = asyncHandler(async(req, res, next) => {
             throw new ApiError(400, "Avatar file is required");
         }
     }catch(err){
+        console.error(`Error occurred while updating user avatar : ${err}`);
         throw new ApiError(400, err?.message || "Error occurred while updating user avatar..");
     }
 })

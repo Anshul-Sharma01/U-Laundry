@@ -1,11 +1,18 @@
 import { useSelector } from "react-redux";
 import NavigationLayout from "../../NavigationLayout/NavigationLayout";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import UpdateAvatar from "../../Components/Profile/UpdateAvatar";
 
 function UserProfile() {
+    const [ showAvatarModal, setShowAvatarModal ] = useState(false);
 
-    const userData = useSelector((state ) => state?.auth?.userData);
+    const userData = useSelector((state) => state?.auth?.userData);
     const navigate = useNavigate();
+
+
+
+
 
     return (
         <NavigationLayout>
@@ -21,19 +28,19 @@ function UserProfile() {
                             />
                         </div>
                         <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">
-                            {userData?.name || "John Doe"} 
+                            {userData?.name || "John Doe"}
                         </h2>
                         <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
-                            {userData?.email || "john.doe@example.com"} 
+                            {userData?.email || "john.doe@example.com"}
                         </p>
 
-                        
                         <div className="w-full">
                             {[
                                 { label: "Student ID", value: userData?.studentId || "N/A" },
                                 { label: "Father's Name", value: userData?.fatherName || "N/A" },
                                 { label: "Hostel Name", value: userData?.hostelName || "N/A" },
                                 { label: "Room Number", value: userData?.roomNumber || "N/A" },
+                                { label: "Role", value: userData?.role || "N/A" },
                             ].map((item, index) => (
                                 <div
                                     key={index}
@@ -49,10 +56,9 @@ function UserProfile() {
                             ))}
                         </div>
 
-                    
                         <div className="mt-6 flex flex-col md:flex-row gap-4 w-full">
                             <button
-                                onClick={() => alert("Update Avatar Clicked")}
+                                onClick={() => setShowAvatarModal(true)}
                                 className="w-full md:w-auto px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-md transition"
                             >
                                 Update Avatar
@@ -73,6 +79,21 @@ function UserProfile() {
                     </div>
                 </div>
             </section>
+
+            {/* Modal */}
+            {showAvatarModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+                    onClick={() => setShowAvatarModal(false)} // Close modal on click outside
+                >
+                    <div
+                        className="relative"
+                        onClick={(e) => e.stopPropagation()} // Prevent closing on modal click
+                    >
+                        <UpdateAvatar setShowModal={setShowAvatarModal} />
+                    </div>
+                </div>
+            )}
         </NavigationLayout>
     );
 }

@@ -45,13 +45,13 @@ const deleteFromCloudinary = async ( pathId ) => {
         const response = await cloudinary.uploader.destroy(
             pathId, {
                 invalidate : true,
-                resource_type : "auto"
+                resource_type : "image"
             }
         )
 
         return response;
     }catch(err){
-        console.log(`Error occurred while deleting file from cloudinary : ${err}`);
+        console.log(`Error occurred while deleting file from cloudinary : ${err.message}`);
         return null;
     }
 }
