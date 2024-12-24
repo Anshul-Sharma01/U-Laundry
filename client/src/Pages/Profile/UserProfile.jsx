@@ -3,16 +3,14 @@ import NavigationLayout from "../../NavigationLayout/NavigationLayout";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import UpdateAvatar from "../../Components/Profile/UpdateAvatar";
+import UpdateUserDetails from "../../Components/Profile/UpdateUserDetails";
 
 function UserProfile() {
-    const [ showAvatarModal, setShowAvatarModal ] = useState(false);
+    const [showAvatarModal, setShowAvatarModal] = useState(false);
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
 
     const userData = useSelector((state) => state?.auth?.userData);
     const navigate = useNavigate();
-
-
-
-
 
     return (
         <NavigationLayout>
@@ -22,7 +20,7 @@ function UserProfile() {
                         {/* Avatar Section */}
                         <div className="w-28 h-28 mb-4">
                             <img
-                                src={userData?.avatar?.secure_url || "https://via.placeholder.com/150"} 
+                                src={userData?.avatar?.secure_url || "https://via.placeholder.com/150"}
                                 alt="User Avatar"
                                 className="rounded-full w-full h-full object-cover"
                             />
@@ -36,6 +34,7 @@ function UserProfile() {
 
                         <div className="w-full">
                             {[
+                                { label : "Username", value : userData?.username || "N/A"},
                                 { label: "Student ID", value: userData?.studentId || "N/A" },
                                 { label: "Father's Name", value: userData?.fatherName || "N/A" },
                                 { label: "Hostel Name", value: userData?.hostelName || "N/A" },
@@ -64,7 +63,7 @@ function UserProfile() {
                                 Update Avatar
                             </button>
                             <button
-                                onClick={() => alert("Update Profile Clicked")}
+                                onClick={() => setShowDetailsModal(true)}
                                 className="w-full md:w-auto px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-md transition"
                             >
                                 Update Profile
@@ -80,7 +79,20 @@ function UserProfile() {
                 </div>
             </section>
 
-            {/* Modal */}
+            {/* Modals */}
+            {showDetailsModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+                    onClick={() => setShowDetailsModal(false)} // Close modal on click outside
+                >
+                    <div
+                        className="relative"
+                        onClick={(e) => e.stopPropagation()} // Prevent closing on modal click
+                    >
+                        <UpdateUserDetails closeModal={setShowDetailsModal} />
+                    </div>
+                </div>
+            )}
             {showAvatarModal && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"

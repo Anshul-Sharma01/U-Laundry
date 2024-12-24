@@ -10,6 +10,7 @@ import ForgotPassword from './Pages/Auth/ForgotPassword.jsx';
 import ResetPassword from './Pages/Auth/ResetPassword.jsx';
 import UserProfile from './Pages/Profile/UserProfile.jsx';
 import UpdateAvatar from './Components/Profile/UpdateAvatar.jsx';
+import UpdateUserDetails from './Components/Profile/UpdateUserDetails.jsx';
 
 function App() {
 
@@ -24,7 +25,7 @@ function App() {
 
       <Route path='/user/me' element={<UserProfile/>}></Route>
       
-      <Route path='/modal/check' element={<UpdateAvatar/>}></Route>
+      <Route path='/modal/check' element={<UpdateUserDetails/>}></Route>
 
       <Route path='/denied' element={<Denied/>} ></Route>
       <Route path='*' element={<NotFound/>} ></Route>

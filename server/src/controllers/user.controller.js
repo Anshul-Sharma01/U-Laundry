@@ -422,18 +422,30 @@ const changePassword = asyncHandler(async(req, res, next) => {
 
 const updateUserDetails = asyncHandler(async(req, res, next ) => {
     try{
-        const { hostelName, roomNumber } = req.body;
+        const { username, name } = req.body;
+        console.log("Req.body  : ", req.body);
         const userId = req.user._id;
 
-        if(!hostelName && !roomNumber){
-            throw new ApiError(400, "Atleast one field is necessary");
+        if(!username && !name){
+            throw new ApiError(400, "Atleast one field is necessary !!");
         }
         const updationData = {}
-        if(hostelName) { 
-            updationData.hostelName = hostelName;
+        if(username) { 
+            const userNameExists = await User.findOne({ username });
+            if(userNameExists){
+                return res.status(400)
+                .json(
+                    new ApiResponse(
+                        400,
+                        {},
+                        "Username already exists !!"
+                    )
+                )
+            }
+            updationData.username = username;
         } 
-        if(roomNumber){
-            updationData.roomNumber = roomNumber;
+        if(name){
+            updationData.name = name;
         }
 
         const user = await User.findByIdAndUpdate(
@@ -449,6 +461,7 @@ const updateUserDetails = asyncHandler(async(req, res, next ) => {
         return res.status(200).json(new ApiResponse(200, user, "Details updated successfully"));
 
     }catch(err){
+        console.log(`Error occurred while updating the user details : ${err}`);
         throw new ApiError(400, err?.message || "Error occurred while updating user details !");
     }
 })
