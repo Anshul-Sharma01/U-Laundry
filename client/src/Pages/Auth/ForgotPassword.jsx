@@ -3,29 +3,35 @@ import toast from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { resetPasswordThunk } from "../../Redux/Slices/authSlice";
 import { useNavigate } from "react-router-dom";
+import Loader from "../../Components/Feedback/Loader";
 
 function ForgotPassword() {
     const [email, setEmail] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
 
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
     const handleSubmit = async(e) => {
+        setIsLoading(true);
         e.preventDefault();
         toast.dismiss();
 
         if (!email) {
             toast.error("Email is required!");
+            setIsLoading(false);
             return;
         }
 
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             toast.error("Please enter a valid email address!");
+            setIsLoading(false);
             return;
         }
 
         const res = await dispatch(resetPasswordThunk({ email }));
         // console.log("Res  : ", res);
+        setIsLoading(false);
         navigate("/auth/sign-in");
     };
 
@@ -62,9 +68,11 @@ function ForgotPassword() {
                         {/* Submit Button */}
                         <button
                             type="submit"
-                            className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800 transition"
+                            className={`bg-blue-500 w-full px-4 py-2 text-white rounded-lg transition-colors ${
+                            isLoading ? "bg-gray-500 text-gray-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-400"
+                            }`}                                    disabled={isLoading}
                         >
-                            Submit
+                            {isLoading ? <Loader /> : "Submit"}
                         </button>
                     </form>
                 </div>

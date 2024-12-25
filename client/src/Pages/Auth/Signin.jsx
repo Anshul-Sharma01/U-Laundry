@@ -3,11 +3,13 @@ import { toast } from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import { authenticateUserThunk } from "../../Redux/Slices/authSlice";
+import Loader from "../../Components/Feedback/Loader";
 
 function Signin() {
 
     const [ studentEmail, setstudentEmail ] = useState("");
     const [ studentPassword, setStudentPassword ] = useState("");
+    const [ isLoading, setIsLoading ] = useState(false);
 
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -18,9 +20,11 @@ function Signin() {
 
     const handleFormSubmission = async(e) => {
         toast.dismiss();
+        setIsLoading(true);
         e.preventDefault();
         if(!studentEmail || !studentPassword){
             toast.error("All Fields are mandatory");
+            setIsLoading(false);
             return;
         }
 
@@ -28,8 +32,10 @@ function Signin() {
         if(response?.payload?.statusCode == 200){
             setStudentPassword("");
             setstudentEmail("");
+            setIsLoading(false);
             navigate(`/auth/verify-code?identifier=${studentEmail}`);
         }
+        setIsLoading(false);
     }
 
     useEffect(() => {
@@ -86,9 +92,12 @@ function Signin() {
                             <div className="flex flex-col justify-center items-center">
                                 <button
                                     type="submit"
-                                    className="bg-blue-500 w-full px-4 py-2 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-400 transition-colors"
+                                    className={`bg-blue-500 w-full px-4 py-2 text-white rounded-lg transition-colors ${
+                                        isLoading ? "bg-gray-500 text-gray-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-400"
+                                    }`}
+                                    disabled={isLoading}
                                 >
-                                    Sign In
+                                    {isLoading ? <Loader /> : "Sign In"}
                                 </button>
                                 <Link to="/auth/forgot-password" className="text-blue-600">Forgot Password ? </Link>
                             </div>

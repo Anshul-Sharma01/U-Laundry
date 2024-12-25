@@ -3,21 +3,27 @@ import toast from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { resetPasswordTokenThunk } from "../../Redux/Slices/authSlice";
+import Loader from "../../Components/Feedback/Loader";
+
 
 function ResetPassword() {
     const [ password, setPassword ] = useState("");
+    const [ isLoading, setIsLoading ] = useState(false);
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
     const { resetToken } = useParams();
 
     const handleSubmit = async (e) => {
+        setIsLoading(true);
         e.preventDefault();
         if(!password){
             toast.error("Please enter new password");
+            setIsLoading(false);
             return;
         }
         const res = await dispatch(resetPasswordTokenThunk({ resetToken, password  }));
+        setIsLoading(false);
         navigate("/auth/sign-in");
     };
 
@@ -59,11 +65,14 @@ function ResetPassword() {
                         </div>
 
                         {/* Submit Button */}
+
                         <button
                             type="submit"
-                            className="w-full py-3 bg-blue-500 hover:bg-blue-900 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-400"
+                            className={`bg-blue-500 w-full px-4 py-2 text-white rounded-lg transition-colors ${
+                            isLoading ? "bg-gray-500 text-gray-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-400"
+                            }`}                                    disabled={isLoading}
                         >
-                            Reset Password
+                            {isLoading ? <Loader /> : "Reset Password"}
                         </button>
                     </form>
 
@@ -76,6 +85,7 @@ function ResetPassword() {
                         >
                             Login here
                         </button>
+                        
                     </div>
                 </div>
             </section>

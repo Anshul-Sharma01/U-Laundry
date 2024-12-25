@@ -3,11 +3,13 @@ import { VscRefresh } from "react-icons/vsc";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { requestNewVerificationCodeThunk, verifyCodeThunk } from "../../Redux/Slices/authSlice";
+import Loader from "../../Components/Feedback/Loader";
 
 function VerifyCode() {
   const [otp, setOtp] = useState(new Array(6).fill(""));
   const [timeLeft, setTimeLeft] = useState(60); // 60 seconds countdown timer
   const [isTimerActive, setIsTimerActive] = useState(true);
+  const [ isLoading, setIsLoading ] = useState(false);
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const identifier = queryParams.get("identifier");
@@ -64,11 +66,14 @@ function VerifyCode() {
   };
 
   const handleOtpSubmission = async () => {
+    setIsLoading(true);
     const verifyCode = parseInt(otp.join(""));
     const response = await dispatch(verifyCodeThunk({ email: identifier, verifyCode }));
     if (response?.payload?.statusCode === 200) {
+      setIsLoading(false);
       navigate("/");
     }
+    setIsLoading(false);
     setOtp(new Array(6).fill(""));
   };
 
@@ -95,10 +100,14 @@ function VerifyCode() {
           ))}
         </div>
         <button
-          className="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md font-medium transition-colors"
+          type="submit"
+          className={`bg-blue-500 w-full px-4 py-2 text-white rounded-lg transition-colors ${
+          isLoading ? "bg-gray-500 text-gray-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-400"
+          }`}
+          disabled={isLoading}
           onClick={handleOtpSubmission}
         >
-          Verify OTP
+          {isLoading ? <Loader loaderText={"verifying..."} /> : "Verify Otp"}
         </button>
         <div className="text-gray-600 dark:text-gray-300 text-sm flex items-center justify-center space-x-2 mt-4">
           <span>

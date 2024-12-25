@@ -4,9 +4,11 @@ import toast, { Toaster } from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { changePasswordThunk } from "../../Redux/Slices/authSlice";
+import Loader from "../../Components/Feedback/Loader";
 
 function ChangePassword() {
     const [formData, setFormData] = useState({ oldPassword: "", newPassword: "" });
+    const [ isLoading, setIsLoading ] = useState(false);
 
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -17,18 +19,21 @@ function ChangePassword() {
     };
 
     const handleSubmit = async(e) => {
+        setIsLoading(true);
         e.preventDefault();
         toast.dismiss();
 
         // Validation
         if (!formData.oldPassword || !formData.newPassword) {
             toast.error("All the fields are mandatory!");
+            setIsLoading(false);
             return;
         }
 
         const res = await dispatch(changePasswordThunk({oldPassword : formData.oldPassword, newPassword : formData.newPassword}));
         // console.log("response for change password : ", res);
         setFormData({ oldPassword : "", newPassword : "" });
+        setIsLoading(false);
     };
 
     return (
@@ -85,9 +90,12 @@ function ChangePassword() {
                             {/* Submit Button */}
                             <button
                                 type="submit"
-                                className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 dark:hover:bg-blue-700 transition"
+                                className={`p-2 text-white rounded transition flex flex-row justify-center items-center gap-2 ${
+                                    isLoading ? "bg-gray-400 text-black cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+                                }`}
+                                disabled={isLoading}
                             >
-                                Change Password
+                                {isLoading ? <Loader/> : "Submit"}
                             </button>
                         </form>
                     </section>
