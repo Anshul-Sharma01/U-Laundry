@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import HomePage from "./Pages/HomePage.jsx";
 import Signin from './Pages/Auth/Signin.jsx';
@@ -11,8 +11,23 @@ import ResetPassword from './Pages/Auth/ResetPassword.jsx';
 import UserProfile from './Pages/Profile/UserProfile.jsx';
 import UpdateAvatar from './Components/Profile/UpdateAvatar.jsx';
 import UpdateUserDetails from './Components/Profile/UpdateUserDetails.jsx';
+import { io } from "socket.io-client";
 
 function App() {
+
+  useEffect(() => {
+    const socket = io("http://localhost:5000", {
+      withCredentials : true,
+    });
+
+    socket.on("connect", () => {
+      console.log("Connected to server");
+    })
+
+    return () => {
+      socket.disconnect();
+    }
+  }, []);
 
   return (
     <Routes>

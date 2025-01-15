@@ -1,5 +1,42 @@
 # U-Laundry
 
+## Repository Structure
+
+### Client
+```
+u-laundry-client/
+├── public/
+│   ├── index.html
+│   └── favicon.ico
+├── src/
+│   ├── assets/
+│   ├── components/
+│   ├── pages/
+│   ├── services/
+│   ├── App.js
+│   ├── index.js
+│   └── styles/
+├── .gitignore
+├── package.json
+└── README.md
+```
+
+### Server
+```
+u-laundry-server/
+├── config/
+│   ├── db.js
+│   ├── keys.js
+├── controllers/
+├── models/
+├── routes/
+├── middleware/
+├── .gitignore
+├── package.json
+├── server.js
+└── README.md
+```
+
 ## Project Overview
 U-Laundry is a web-based application designed to streamline the laundry process for users. It allows users to schedule laundry pickups, track their laundry status, and make payments online.
 
