@@ -39,7 +39,7 @@ function ThemeToggle(){
                         transform: isDarkMode ? 'scale(0.5)' : 'scale(1)',
                     }}
                 >
-                    <FiSun size={30} />
+                    <FiMoon size={30} />
                 </div>
                 <div
                     className={`icon transition-all duration-300 absolute ${isDarkMode ? 'opacity-100' : 'opacity-0'}`}
@@ -49,7 +49,7 @@ function ThemeToggle(){
                         transform: isDarkMode ? 'scale(1)' : 'scale(0.5)',
                     }}
                 >
-                    <FiMoon size={30} />
+                    <FiSun size={30} />
                 </div>
 
             </div>
