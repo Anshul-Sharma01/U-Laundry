@@ -11,7 +11,7 @@ import ResetPassword from './Pages/Auth/ResetPassword.jsx';
 import UserProfile from './Pages/Profile/UserProfile.jsx';
 import UpdateAvatar from './Components/Profile/UpdateAvatar.jsx';
 import UpdateUserDetails from './Components/Profile/UpdateUserDetails.jsx';
-
+import PlaceOrder from "./Components/Orders/PlaceOrder.jsx"
 
 function App() {
 
@@ -28,6 +28,12 @@ function App() {
       <Route path='/user/me' element={<UserProfile/>}></Route>
       
       <Route path='/modal/check' element={<UpdateUserDetails/>}></Route>
+
+
+
+      {/* Order routes */}
+      <Route path='/orders/place-new-order' element={<PlaceOrder />}></Route>
+
 
       <Route path='/denied' element={<Denied/>} ></Route>
       <Route path='*' element={<NotFound/>} ></Route>
