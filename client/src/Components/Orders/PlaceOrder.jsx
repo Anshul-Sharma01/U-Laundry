@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import NavigationLayout from "../../NavigationLayout/NavigationLayout";
 import toast from "react-hot-toast";
+import { useDispatch, useSelector } from "react-redux";
+import { createOrderThunk } from "../../Redux/Slices/orderSlice.js";
+import { handlePayment } from "../../Helpers/handlePayment.js";
 
 const clothesData = [
     { id: 1, name: "Men's T-Shirt", price: 100, image: "https://img.freepik.com/premium-vector/white-men-tshirt-fashion-illustration-template_444663-124.jpg" },
@@ -15,8 +18,12 @@ const clothesData = [
     { id: 10, name: "Women's Coat", price: 400, image: "https://i.pinimg.com/736x/db/63/72/db637246fc1c1a5b3cbf85bf89f005d4.jpg" },
 ];
 
+
+
 const OrderPage = () => {
     const [cart, setCart] = useState({});
+    const dispatch = useDispatch();
+    const userData = useSelector((state) => state?.auth?.userData);
 
     const handleIncrement = (id) => {
         setCart((prevCart) => ({
@@ -44,8 +51,18 @@ const OrderPage = () => {
         if(totalClothes == 0){
             toast.error("Please select clothes first");
             return;
-        }else{
-            toast.success("Page working correctly !!");
+        }
+        const orderData = {
+            moneyAmount : totalPrice,
+            totalClothes,
+            currency : "INR"
+        };
+
+        const result = await dispatch(createOrderThunk(orderData));
+
+        if(result.payload){
+            const { razorpayOrderId, receipt } = result.payload.data;
+            handlePayment(razorpayOrderId, totalPrice, receipt, dispatch, userData);
         }
     }
 
@@ -66,7 +83,7 @@ const OrderPage = () => {
                                 <img
                                     src={item.image}
                                     alt={item.name}
-                                    className="w-32 h-32 object-cover mb-4"
+                                    className="w-32 h-32 object-cover mb-4 "
                                 />
                                 <h2 className="text-lg font-semibold">{item.name}</h2>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">₹{item.price}</p>

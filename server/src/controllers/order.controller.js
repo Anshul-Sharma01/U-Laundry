@@ -241,57 +241,43 @@ const getOrdersByStatus = asyncHandler(async(req, res, next) => {
     }
 })
 
-const verifyRazorpaySignature = asyncHandler(async ( req, res, next) => {
-    try{
+
+const verifyRazorpaySignature = asyncHandler(async (req, res, next) => {
+    try {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-        const orderId = req.params.orderId;
 
-
-        const body = razorpay_order_id + "|" + razorpay_payment_id;
-
-        const verification = await razorpayService.verifySignature(body, razorpay_signature);
-
-
-        if(verification){
-
-            const order = await Order.findByIdAndUpdate(
-                orderId,
-                { moneyPaid : true, razorpayOrderId : razorpay_order_id, status: 'Order Placed', },
-                { new : true }
-            )
-
-            return res.status(200)
-            .json(
-                new ApiResponse(
-                    200,
-                    order,
-                    "Payment Signature Verified successfully"
-                )
-            )
-        }else{
-
-            const order = await Order.findByIdAndUpdate(
-                orderId,
-                { moneyPaid : false },
-                { new : true }
-            )
-
-            return res.status(200)
-            .json(
-                new ApiResponse(
-                    200,
-                    order,
-                    "Payment Signature Invalid"
-                )
-            )
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+            throw new ApiError(400, "All fields are mandatory for payment verification");
         }
 
-    }catch(err){
-        console.error(`Error occurred while verifying razorpay payment signature : ${err}`);
-        throw new ApiError(400, err?.message || "Error occurred while verifying razorpay payment signature !!");
-    }
-})
+        // Fetch the corresponding order from the database
+        const order = await Order.findOne({ razorpayOrderId: razorpay_order_id });
+        if (!order) {
+            throw new ApiError(400, "Order not found");
+        }
 
+        // Create the signature for verification
+        const generated_signature = crypto
+            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+            .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+            .digest("hex");
+
+        // Compare the generated signature with the received one
+        if (generated_signature !== razorpay_signature) {
+            throw new ApiError(400, "Invalid payment signature");
+        }
+
+        // Update order status to "Paid"
+        order.moneyPaid = true;
+        order.razorpayPaymentId = razorpay_payment_id;
+        await order.save();
+
+        return res.status(200).json(new ApiResponse(200, order, "Payment verified successfully"));
+    } catch (err) {
+        console.error(`Error occurred while verifying payment signature: ${err.message}`);
+        throw new ApiError(400, err?.message || "Error occurred during payment verification");
+    }
+});
 
 export {
     addNewOrder,

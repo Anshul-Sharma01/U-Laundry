@@ -10,7 +10,7 @@ const initialState = {
 }
 
 
-export const createOrder = createAsyncThunk("orders/create-order", async(data) => {
+export const createOrderThunk = createAsyncThunk("orders/create-order", async(data) => {
     try{
         const response = axiosInstance.post("order/add", data);
         toast.promise(response, {
@@ -25,7 +25,7 @@ export const createOrder = createAsyncThunk("orders/create-order", async(data) =
 })
 
 
-export const verifyPayment = createAsyncThunk("order/verifyPayment", async(data) => {
+export const verifyPaymentThunk = createAsyncThunk("order/verifyPayment", async(data) => {
     try{
         const response = await axiosInstance.post("order/verify-signature", data);
         toast.promise(response, {
@@ -50,10 +50,10 @@ const orderSlice = createSlice({
     },
     extraReducers : (builder) => {
         builder
-            .addCase(createOrder.fulfilled, (state, action) => {
+            .addCase(createOrderThunk.fulfilled, (state, action) => {
                 state.order = action.payload.data;
             })
-            .addCase(verifyPayment.fulfilled, (state, action) => {
+            .addCase(verifyPaymentThunk.fulfilled, (state, action) => {
                 state.paymentStatus = action.payload.message
             })
     }

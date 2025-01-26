@@ -58,7 +58,7 @@ function NavigationLayout({ children }) {
                         className="focus:outline-none"
                         aria-label="Open mobile menu"
                     >
-                        <img src={userData?.avatar?.secure_url} className="h-8 dark:text-gray-100" />
+                        <img src={userData?.avatar?.secure_url} className="h-8 dark:text-gray-100 rounded-full" />
                     </button>
                 </div>
             </nav>
