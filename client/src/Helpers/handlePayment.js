@@ -3,7 +3,7 @@ import { verifyPaymentThunk } from "../Redux/Slices/orderSlice";
 import toast from "react-hot-toast";
 
 
-export const handlePayment = ( orderId, amount, receipt, dispatch, userData ) => {
+export const handlePayment = ( orderId, amount, receipt, dispatch, navigate, userData ) => {
     const options = {
         key : import.meta.env.VITE_RAZORPAY_KEY,
         amount : amount * 100,
@@ -20,7 +20,7 @@ export const handlePayment = ( orderId, amount, receipt, dispatch, userData ) =>
             };
             const result = await dispatch(verifyPaymentThunk(paymentData));
             if(result.payload){
-                toast.success("Payment Verified successfully");
+                navigate("/orders/my-orders");
             }else{
                 toast.error("Payment Verification Failed");
             }

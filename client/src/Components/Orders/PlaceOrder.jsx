@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import { createOrderThunk } from "../../Redux/Slices/orderSlice.js";
 import { handlePayment } from "../../Helpers/handlePayment.js";
+import { useNavigate } from "react-router-dom";
 
 const clothesData = [
     { id: 1, name: "Men's T-Shirt", price: 100, image: "https://img.freepik.com/premium-vector/white-men-tshirt-fashion-illustration-template_444663-124.jpg" },
@@ -23,6 +24,7 @@ const clothesData = [
 const OrderPage = () => {
     const [cart, setCart] = useState({});
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const userData = useSelector((state) => state?.auth?.userData);
 
     const handleIncrement = (id) => {
@@ -62,7 +64,7 @@ const OrderPage = () => {
 
         if(result.payload){
             const { razorpayOrderId, receipt } = result.payload.data;
-            handlePayment(razorpayOrderId, totalPrice, receipt, dispatch, userData);
+            handlePayment(razorpayOrderId, totalPrice, receipt, dispatch, navigate, userData);
         }
     }
 

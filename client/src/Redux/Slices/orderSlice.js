@@ -27,7 +27,7 @@ export const createOrderThunk = createAsyncThunk("orders/create-order", async(da
 
 export const verifyPaymentThunk = createAsyncThunk("order/verifyPayment", async(data) => {
     try{
-        const response = await axiosInstance.post("order/verify-signature", data);
+        const response = axiosInstance.post("order/verify-signature", data);
         toast.promise(response, {
             loading : "verifying payment signature..",
             success : (data) => data?.data?.message,

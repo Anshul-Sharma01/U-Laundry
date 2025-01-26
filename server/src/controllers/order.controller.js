@@ -6,6 +6,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import sendEmail from "../utils/sendEmail.js";
 import razorpayService from "../utils/razorpayService.js";
+import crypto from "crypto";
 
 
 const addNewOrder = asyncHandler(async(req, res, next) => {
@@ -23,9 +24,8 @@ const addNewOrder = asyncHandler(async(req, res, next) => {
 
         const receipt = `receipt_${Math.floor(Math.random() * 100000)}`;
         const amount = moneyAmount * 100;
-
+        
         const paymentOrder = await razorpayService.createOrder(amount, currency, receipt);
-        // console.log("PaymentOrder : ", paymentOrder);
 
         const order = await Order.create({
             moneyAmount : amount,
@@ -38,8 +38,6 @@ const addNewOrder = asyncHandler(async(req, res, next) => {
         if(!order){
             throw new ApiError(400, "Order not created !!");
         }
-
-
 
         const user = await User.findByIdAndUpdate(
             userId,
@@ -60,7 +58,11 @@ const addNewOrder = asyncHandler(async(req, res, next) => {
 
         return res.status(201)
         .json(
-            new ApiResponse(201, order, "Order created successfully")
+            new ApiResponse(
+                201,
+                order,
+                "Order created successfully"
+            )
         );
 
 
@@ -270,16 +272,26 @@ const verifyRazorpaySignature = asyncHandler(async (req, res, next) => {
         // Update order status to "Paid"
         order.moneyPaid = true;
         order.razorpayPaymentId = razorpay_payment_id;
+        order.status = "Order Placed";
         await order.save();
 
-        return res.status(200).json(new ApiResponse(200, order, "Payment verified successfully"));
+        return res.status(200).json(
+            new ApiResponse(
+                200, 
+                order,
+                "Payment verified successfully"
+            )
+        );
     } catch (err) {
         console.error(`Error occurred while verifying payment signature: ${err.message}`);
         throw new ApiError(400, err?.message || "Error occurred during payment verification");
     }
 });
 
+
+
 export {
+
     addNewOrder,
     updateOrderStatus,
     getOrderById,
