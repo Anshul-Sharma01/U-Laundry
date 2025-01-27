@@ -30,10 +30,11 @@ export const verifyPaymentThunk = createAsyncThunk("order/verifyPayment", async(
     }
 })
 
-export const getUserOrdersHistoryThunk = createAsyncThunk("orders/my-orders", async ({ userId }) => {
+export const getUserOrdersHistoryThunk = createAsyncThunk("orders/my-orders", async ({ userId, page, limit }) => {
     try{
-        const response = axiosInstance.get(`order/view/${userId}`);
+        const response = axiosInstance.get(`order/view/${userId}?page=${page}&limit=${limit}`);
         toastHandler(response, "Fetching user orders...", "Successfully fetched user orders !!", "Failed to fetch user orders !!");
+        console.log("Response from orders : ", (await response).data);
         return (await response).data;
     }catch(err){
         console.error(`Error occurred while fetching users orders : ${err}`);
@@ -54,8 +55,10 @@ const orderSlice = createSlice({
                 state.paymentStatus = action.payload.message
             })
             .addCase(getUserOrdersHistoryThunk.fulfilled, (state, action) => {
-                state.userOrders = action.payload.data;
-            })
+                state.userOrders = action?.payload?.data?.userOrders;
+                state.totalOrders = action?.payload?.data?.totalOrders;
+                state.totalPages = action?.payload?.data?.totalPages;
+            });
     }
 })
 

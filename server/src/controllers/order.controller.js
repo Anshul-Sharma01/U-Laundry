@@ -143,18 +143,68 @@ const getOrderById = asyncHandler(async (req, res, next) => {
 
 const getOrdersByUser = asyncHandler(async (req, res, next) => {
     try{
+        let { page, limit } = req.query;
+        page = parseInt(page) || 1;
+        limit = parseInt(limit) || 5;
+
+        const skip = ( page - 1 ) * limit;
+
+        const totalOrders = await Order.countDocuments();
+
+        
         const { userId } = req.params;
         if(!isValidObjectId(userId)){
             throw new ApiError(400, "Invalid Order Id");
         }
 
-        const userOrders = await Order.find({user : userId});
+        const userOrders = await Order.find({user : userId})
+            .skip(skip)
+            .limit(limit)
+            .sort({createdAt : -1});
 
-        if(userOrders.length === 0){
-            return res.status(200).json(new ApiResponse(200, userOrders, "User Orders doesn't exists"));
+        if(totalOrders.length === 0){
+            return res.status(200).json(
+                new ApiResponse(
+                    200,
+                    {
+                        userOrders,
+                        totalOrders,
+                        totalPages : 0,
+                        currentPage : page
+                    },
+                    "User Orders doesn't exists"
+                )
+            );
         }
 
-        return res.status(200).json(new ApiResponse(200, userOrders, "User Orders fetched successfully"));
+        const totalPages = Math.ceil(totalOrders / limit);
+        if(page > totalPages){
+            return res.status(200).json(
+                new ApiResponse(
+                    200,
+                    {
+                        userOrders : [],
+                        totalOrders,
+                        totalPages,
+                        currentPage : page
+                    },
+                    "Page exceeds total number of pages"
+                )
+            )
+        }
+
+        return res.status(200).json(
+            new ApiResponse(
+                200, 
+                {
+                    userOrders,
+                    totalOrders,
+                    totalPages,
+                    currentPage : page
+                },
+                "User Orders fetched successfully"
+            )
+        );
 
     }catch(err){
         throw new ApiError(400, "Error occurred while fetching User orders");
