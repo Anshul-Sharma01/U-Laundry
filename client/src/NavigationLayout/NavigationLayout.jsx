@@ -23,26 +23,26 @@ function NavigationLayout({ children }) {
                 <ul className="hidden md:flex items-center gap-8">
                     <li>
                         <Link
-                        to="/"
-                        className="text-sm md:text-base hover:text-blue-500 dark:hover:text-blue-300 transition-colors"
+                            to="/"
+                            className="text-sm md:text-base hover:text-blue-500 dark:hover:text-blue-300 transition-colors"
                         >
-                        Home
+                            Home
                         </Link>
                     </li>
                     <li>
                         <Link
-                        to="/orders"
-                        className="text-sm md:text-base hover:text-blue-500 dark:hover:text-blue-300 transition-colors"
+                            to="/orders/my-orders"
+                            className="text-sm md:text-base hover:text-blue-500 dark:hover:text-blue-300 transition-colors"
                         >
-                        My Orders
+                            My Orders
                         </Link>
                     </li>
                     <li>
                         <Link
-                        to="/user/me"
-                        className="text-sm md:text-base hover:text-blue-500 dark:hover:text-blue-300 transition-colors"
+                            to="/user/me"
+                            className="text-sm md:text-base hover:text-blue-500 dark:hover:text-blue-300 transition-colors"
                         >
-                        My Profile
+                            My Profile
                         </Link>
                     </li>
                     <li>
@@ -81,7 +81,7 @@ function NavigationLayout({ children }) {
                         </li>
                         <li>
                             <Link
-                                to="/orders"
+                                to="/orders/my-orders"
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className="text-sm md:text-base hover:text-blue-500 dark:hover:text-blue-300 transition-colors"
                             >
