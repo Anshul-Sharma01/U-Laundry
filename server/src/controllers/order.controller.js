@@ -160,7 +160,7 @@ const getOrdersByUser = asyncHandler(async (req, res, next) => {
         const userOrders = await Order.find({user : userId})
             .skip(skip)
             .limit(limit)
-            .sort({createdAt : -1});
+            .sort({ createdAt : -1 });
 
         if(totalOrders.length === 0){
             return res.status(200).json(

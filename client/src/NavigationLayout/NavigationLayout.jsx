@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { RxAvatar } from "react-icons/rx";
 import ThemeToggle from "../Components/Theme/ThemeToggle.jsx";
 import { useSelector } from "react-redux";
+import Logout from "../Components/Auth/Logout.jsx";
 
 function NavigationLayout({ children }) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -44,6 +45,9 @@ function NavigationLayout({ children }) {
                         >
                             My Profile
                         </Link>
+                    </li>
+                    <li>
+                        <Logout className="text-sm md:text-base hover:text-red-500 dark:hover:text-red-300 transition-colors"/>
                     </li>
                     <li>
                         <ThemeToggle />
@@ -96,6 +100,9 @@ function NavigationLayout({ children }) {
                             >
                                 My Profile
                             </Link>
+                        </li>
+                        <li>
+                            <Logout className="text-sm md:text-base hover:text-red-500 dark:hover:text-red-300 transition-colors"/>
                         </li>
                     </ul>
                 </div>

@@ -37,6 +37,8 @@ const orderSchema = new Schema({
     receipt : {
         type : String, 
     }
+}, {
+    timestamps : true
 })
 
 

@@ -77,7 +77,7 @@ const UserOrders = () => {
                                                 <strong>Date:</strong> {formatDate(order.date)}
                                             </p>
                                             <p className="flex items-center gap-2">
-                                                {order.status === "Completed" ? (
+                                                {order.status === "Picked Up" ? (
                                                 <FaCheckCircle className="text-green-500" />
                                                 ) : (
                                                 <FaTimesCircle className="text-red-500" />
@@ -85,7 +85,7 @@ const UserOrders = () => {
                                                 <strong>Status:</strong>{" "}
                                                 <span
                                                 className={`${
-                                                    order.status === "Completed"
+                                                    order.status === "Picked Up"
                                                     ? "text-green-500"
                                                     : "text-red-500"
                                                 } font-medium`}
