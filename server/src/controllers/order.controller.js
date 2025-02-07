@@ -244,20 +244,40 @@ const cancelOrder = asyncHandler(async( req, res, next) => {
 
 const getAllOrders = asyncHandler(async(req, res, next) => {
     try{
-        const allOrders = await Order.find({});
-        
-        
-        if(allOrders.length === 0){
-            return res.status(200)
-            .json(
-                new ApiResponse(200, allOrders, "No Orders")
+        let { page, limit } = req.query;
+        page = parseInt(page) || 1;
+        limit = parseInt(limit) || 5;
+
+        const skip = ( page - 1 ) * limit; 
+
+        const totalOrders = await Order.countDocuments();
+
+        const orders = await Order.find({ status: { $ne: 'Picked Up' } })
+            .skip(skip)
+            .limit(limit)
+            .sort({ createdAt: -1 });
+
+        if (orders.length === 0) {
+            return res.status(200).json(
+                new ApiResponse(
+                    200,
+                    orders,
+                    "No Orders found"
+                )
             );
         }
 
-        return res.status(200)
-        .json(
-            new ApiResponse(200, allOrders, "All Orders fetched Successfully")
-        );
+        const totalPages = Math.ceil(totalOrders / limit);
+        if (page > totalPages) {
+            return res.status(200).json(
+            new ApiResponse(200, {
+                orders: [],
+                totalOrders,
+                totalPages,
+                currentPage: page
+            }, "Page exceeds total number of pages")
+            );
+        }
 
     }catch(err){
         throw new ApiError(400, err?.message || "Error occurred while fetching all orders");

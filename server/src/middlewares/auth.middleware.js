@@ -19,11 +19,13 @@ export const verifyJWT = asyncHandler( async (req, _, next) => {
 
         // console.log("Decoded token : ", decodedToken);
 
-        const user = await User.findById(decodedToken?._id);
+        const user = await User.findById(decodedToken?._id).select("+role");
 
         if(!user){
             throw new ApiError(401, "Invalid Access Token");
         }
+        console.log("User inserted by jwt : ", user);
+
 
         req.user = user;
         next();
@@ -41,9 +43,12 @@ export const verifyModerator = asyncHandler(async(req, _ , next) => {
     try{
         const { user } = req;
 
-        if(!user || !user.role != 'laundary-moderator'){
+        // console.log(user);
+
+        if(!user || user.role != 'laundary-moderator'){
             throw new ApiError(403, "Access forbidden");
         }
+
         next();
 
     }catch(err){

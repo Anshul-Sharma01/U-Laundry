@@ -100,7 +100,7 @@ const loginUser = asyncHandler(async(req, res, next) => {
             throw new ApiError(400, "All fields are mandatory");
         }
 
-        const user = await User.findOne({email}).select("+password");
+        const user = await User.findOne({email}).select("+password +role");
         if(!user){
             return res.status(400)
             .json(

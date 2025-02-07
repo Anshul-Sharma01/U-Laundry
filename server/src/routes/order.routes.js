@@ -27,11 +27,11 @@ router.route("/view/:orderId")
 
 // laundary-moderator routes
 router.route("/update/:orderId/:status")
-.patch( verifyModerator, updateOrderStatus);
+.patch( verifyJWT,  verifyModerator, updateOrderStatus);
 
 
 router.route("/getall")
-.get(verifyModerator, getAllOrders);
+.get(verifyJWT, verifyModerator, getAllOrders);
 
 router.route("/get/:status")
 .get(verifyModerator, getOrdersByStatus);

@@ -13,6 +13,7 @@ import UpdateAvatar from './Components/Profile/UpdateAvatar.jsx';
 import UpdateUserDetails from './Components/Profile/UpdateUserDetails.jsx';
 import PlaceOrder from "./Components/Orders/PlaceOrder.jsx"
 import UserOrders from './Pages/Orders/UserOrders.jsx';
+import AllOrders from './Components/Admin/AllOrders.jsx';
 
 function App() {
 
@@ -35,6 +36,9 @@ function App() {
       {/* Order routes */}
       <Route path='/orders/place-new-order' element={<PlaceOrder />}></Route>
       <Route path='/orders/my-orders' element={<UserOrders/>}></Route>
+
+      {/* laundry moderator routes */}
+      <Route path='/admin/all-orders'  element={<AllOrders/>}></Route>
 
 
       <Route path='/denied' element={<Denied/>} ></Route>
