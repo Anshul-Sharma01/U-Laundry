@@ -244,7 +244,8 @@ const cancelOrder = asyncHandler(async( req, res, next) => {
 
 const getAllOrders = asyncHandler(async(req, res, next) => {
     try{
-        const allOrders = await Order.find({})
+        const allOrders = await Order.find({});
+        
         
         if(allOrders.length === 0){
             return res.status(200)
