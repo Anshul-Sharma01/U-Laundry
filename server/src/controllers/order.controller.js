@@ -242,47 +242,53 @@ const cancelOrder = asyncHandler(async( req, res, next) => {
 })
 
 
-const getAllOrders = asyncHandler(async(req, res, next) => {
-    try{
+const getAllOrders = asyncHandler(async (req, res, next) => {
+    try {
         let { page, limit } = req.query;
         page = parseInt(page) || 1;
-        limit = parseInt(limit) || 5;
+        limit = parseInt(limit) || 3;
 
-        const skip = ( page - 1 ) * limit; 
+        const skip = (page - 1) * limit;
 
-        const totalOrders = await Order.countDocuments();
+        // Corrected totalOrders count (excluding "Picked Up" orders)
+        const totalOrders = await Order.countDocuments({ status: { $ne: 'Picked Up' } });
 
         const orders = await Order.find({ status: { $ne: 'Picked Up' } })
             .skip(skip)
             .limit(limit)
-            .sort({ createdAt: -1 });
-
-        if (orders.length === 0) {
-            return res.status(200).json(
-                new ApiResponse(
-                    200,
-                    orders,
-                    "No Orders found"
-                )
-            );
-        }
+            .sort({ createdAt: -1 })
+            .populate("user", "username name email");
 
         const totalPages = Math.ceil(totalOrders / limit);
+        // console.log("Total pages:", totalPages);
+
+        // If the page exceeds total pages, return an empty response
         if (page > totalPages) {
             return res.status(200).json(
-            new ApiResponse(200, {
-                orders: [],
-                totalOrders,
-                totalPages,
-                currentPage: page
-            }, "Page exceeds total number of pages")
+                new ApiResponse(200, {
+                    orders: [],
+                    totalOrders,
+                    totalPages,
+                    currentPage: page,
+                }, "Page exceeds total number of pages")
             );
         }
 
-    }catch(err){
-        throw new ApiError(400, err?.message || "Error occurred while fetching all orders");
+        // Return valid order data
+        return res.status(200).json(
+            new ApiResponse(200, {
+                orders,
+                totalOrders,
+                totalPages,
+                currentPage: page,
+            }, "Orders fetched successfully")
+        );
+
+    } catch (err) {
+        console.error("Error occurred while fetching all orders:", err?.message);
+        next(new ApiError(400, err?.message || "Error fetching all orders"));
     }
-})
+});
 
 
 const getOrdersByStatus = asyncHandler(async(req, res, next) => {

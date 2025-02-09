@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../../Helpers/axiosInstance.js";
 import { toastHandler } from "../../Helpers/toastHandler.js";
+import toast from "react-hot-toast";
 
 const initialState = {
     allOrders : [],
@@ -8,13 +9,18 @@ const initialState = {
     limit : 10
 }
 
-export const fetchAllOrdersThunk = createAsyncThunk("admin/fetch-all-orders", async({ page, limit }) => {
+export const fetchAllOrdersThunk = createAsyncThunk("admin/all-orders", async({ page, limit }) => {
     try{
-        const response = axiosInstance.get(`order/getall?page=${page}&limit=${limit}`);
-        toastHandler(response, "Fetching all orders...", "Successfully fetched all orders", "Failed to fetch all orders");
-        return (await response).data;
+        const res = axiosInstance.get(`order/getall?page=${page}&limit=${limit}`);
+        toast.promise(res, {
+            loading : "fetching all orders..",
+            success : (data) => data?.data?.message,
+            error : "Failed to fetch all orders !!"
+        });
+        // console.log((await res).data);
+        return (await res).data;
     }catch(err){
-        console.error(`Error occurred while fetching all orders`);
+        console.error(`Error occurred while fetching all orders for laundry-moderator : ${err}`);
     }
 })
 
@@ -38,7 +44,7 @@ const adminSlice = createSlice({
     extraReducers : (builder) => {
         builder
             .addCase(fetchAllOrdersThunk.fulfilled, (state, action) => {
-                state.allOrders = action.payload.data;
+                state.allOrders = action?.payload?.data?.orders;
                 state.page = action.meta.arg.page;
                 state.limit = action.meta.arg.limit;
             })
