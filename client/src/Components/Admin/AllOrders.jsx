@@ -65,7 +65,7 @@ function AllOrders() {
                                         <select
                                             className="p-1 border dark:bg-gray-700"
                                             value={order.status}
-                                            onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                                            onChange={(e) => handleStatusChange(order._id, e.target.value)}
                                         >
                                             <option value="Order Placed">Order Placed</option>
                                             <option value="Pending">Pending</option>

@@ -11,6 +11,7 @@ const initialState = {
 
 export const fetchAllOrdersThunk = createAsyncThunk("admin/all-orders", async({ page, limit }) => {
     try{
+        toast.dismiss();
         const res = axiosInstance.get(`order/getall?page=${page}&limit=${limit}`);
         toast.promise(res, {
             loading : "fetching all orders..",
@@ -26,10 +27,11 @@ export const fetchAllOrdersThunk = createAsyncThunk("admin/all-orders", async({ 
 
 export const updateOrderStatusThunk = createAsyncThunk("orders/update-order-status", async({ orderId, status }, { dispatch, getState }) => {
     try{
+        toast.dismiss();
         const response = axiosInstance.patch(`order/update/${orderId}/${status}`);
         toastHandler(response, "Updating order status...", "Successfully updated order status !!", "Failed to update order status !!");
         const { page, limit } = getState().admin;
-        dispatch(fetchAllOrdersThunk({ page : page || 1, limit : limit || 10 })); 
+        await dispatch(fetchAllOrdersThunk({ page : page || 1, limit : limit || 10 })); 
         return (await response).data;
     }catch(err){
         console.error(`Error occurred while updating order status thunk : ${err}`);
