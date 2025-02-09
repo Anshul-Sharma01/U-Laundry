@@ -63,9 +63,10 @@ function AllOrders() {
                                     <td className="p-2">{order.status}</td>
                                     <td className="p-2">
                                         <select
-                                            className="p-1 border dark:bg-gray-700"
+                                            className={`p-1 border dark:bg-gray-700 ${order.status === "Picked Up" ? "bg-gray-400 cursor-not-allowed" : ""}`}
                                             value={order.status}
                                             onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                                            disabled={order.status === "Picked Up"}  // ⬅️ Disable if "Picked Up"
                                         >
                                             <option value="Order Placed">Order Placed</option>
                                             <option value="Pending">Pending</option>
@@ -75,6 +76,7 @@ function AllOrders() {
                                             <option value="Payment left">Payment left</option>
                                         </select>
                                     </td>
+
                                 </tr>
                             ))
                         ) : (

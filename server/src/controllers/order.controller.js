@@ -253,7 +253,7 @@ const getAllOrders = asyncHandler(async (req, res, next) => {
         // Corrected totalOrders count (excluding "Picked Up" orders)
         const totalOrders = await Order.countDocuments({ status: { $ne: 'Picked Up' } });
 
-        const orders = await Order.find({ status: { $ne: 'Picked Up' } })
+        const orders = await Order.find()
             .skip(skip)
             .limit(limit)
             .sort({ createdAt: -1 })
