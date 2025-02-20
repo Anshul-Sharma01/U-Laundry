@@ -53,7 +53,7 @@ U-Laundry is a web-based application designed to streamline the laundry process 
 - **Backend**: Node.js, Express.js
 - **Database**: MongoDB
 - **Payment Gateway**: Razorpay
-- **Notifications**:  Nodemailer for email
+- **Notifications**: Nodemailer for email
 
 ## Installation
 1. Clone the repository:
