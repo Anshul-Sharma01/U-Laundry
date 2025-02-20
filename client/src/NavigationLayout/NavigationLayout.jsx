@@ -10,6 +10,8 @@ function NavigationLayout({ children }) {
     const userData = useSelector((state) => state?.auth?.userData);
 
     const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
+    
+    const userRole = userData?.role;
 
     return (
         <div className="text-gray-900 dark:text-gray-100">
@@ -46,6 +48,18 @@ function NavigationLayout({ children }) {
                             My Profile
                         </Link>
                     </li>
+                    {
+                        userRole === "laundry-moderator" && (
+                            <li>
+                                <Link
+                                    to="/admin/all-orders"
+                                    className="text-sm md:text-base hover:text-blue-500 dark:hover:text-blue-300 transition-colors"
+                                >
+                                    All Orders
+                                </Link>
+                            </li>
+                        )
+                    }
                     <li>
                         <Logout className="text-sm md:text-base hover:text-red-500 dark:hover:text-red-300 transition-colors"/>
                     </li>

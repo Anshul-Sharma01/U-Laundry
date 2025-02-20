@@ -81,7 +81,7 @@ const updateOrderStatus = asyncHandler(async(req, res, next) => {
             throw new ApiError(400, "Invalid Order Id");
         }
         
-        if(!['Order Placed', 'Pending', 'Prepared', 'Picked Up'].includes(status)){
+        if(!['Order Placed', 'Pending', 'Prepared', 'Picked Up', 'Cancelled', 'Payment Left'].includes(status)){
             throw new ApiError(400, "Invalid Status");
         }
 
@@ -251,7 +251,7 @@ const getAllOrders = asyncHandler(async (req, res, next) => {
         const skip = (page - 1) * limit;
 
         // Corrected totalOrders count (excluding "Picked Up" orders)
-        const totalOrders = await Order.countDocuments({ status: { $ne: 'Picked Up' } });
+        const totalOrders = await Order.countDocuments();
 
         const orders = await Order.find()
             .skip(skip)
