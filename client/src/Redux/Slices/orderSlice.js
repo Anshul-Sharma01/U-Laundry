@@ -51,10 +51,10 @@ const orderSlice = createSlice({
     extraReducers : (builder) => {
         builder
             .addCase(createOrderThunk.fulfilled, (state, action) => {
-                state.order = action.payload.data;
+                state.order = action?.payload?.data;
             })
             .addCase(verifyPaymentThunk.fulfilled, (state, action) => {
-                state.paymentStatus = action.payload.message
+                state.paymentStatus = action?.payload?.message
             })
             .addCase(getUserOrdersHistoryThunk.fulfilled, (state, action) => {
                 state.userOrders = action?.payload?.data?.userOrders;
