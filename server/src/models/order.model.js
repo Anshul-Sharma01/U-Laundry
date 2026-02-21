@@ -1,16 +1,16 @@
 import mongoose, { Schema } from "mongoose";
-import { User } from "./user.model.js";
 
 
 const orderSchema = new Schema({
     user : {
         type : Schema.Types.ObjectId,
-        ref : "User"
+        ref : "User",
+        required : [true, "User reference is required"]
     },
     totalClothes : {
         type : Number,
         required : [true, "Total number of clothes is required"],
-        min : [0, "Number of clothes must be a positive number"]
+        min : [1, "Number of clothes must be at least 1"]
     },
     date : {
         type : Date,
@@ -32,6 +32,9 @@ const orderSchema = new Schema({
         default : false
     },
     razorpayOrderId : {
+        type : String
+    },
+    razorpayPaymentId : {
         type : String
     },
     receipt : {

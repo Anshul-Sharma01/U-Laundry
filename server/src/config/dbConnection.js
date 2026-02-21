@@ -4,7 +4,7 @@ mongoose.set('strictQuery', false);
 
 const connectionToDb = async() => {
     try{
-        const { connection } = await mongoose.connect(process.env.MONGO_URI || `mongodb://localhost:27017/Food-Resto-io`) ;
+        const { connection } = await mongoose.connect(process.env.MONGO_URI || `mongodb://localhost:27017/U-Laundary`) ;
 
         if(connection){
             console.log(`Connected to MongoDb : ${connection.host}`);

@@ -1,9 +1,7 @@
 import mongoose, { Schema } from "mongoose";
-import { Order } from "./order.model.js";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { type } from "os";
 
 const userSchema = new Schema({
     username : {
@@ -80,16 +78,6 @@ const userSchema = new Schema({
         type : String,
         select : false
     },
-    verifyCode : {
-        type : Number,
-    },
-    verifyCodeExpiry : {
-        type : Date
-    },
-    isCodeVerified : {
-        type : Boolean,
-        default : false
-    },
     forgotPasswordToken : String,
     forgotPasswordExpiry : Date,
     
@@ -98,12 +86,9 @@ const userSchema = new Schema({
 })
 
 
-userSchema.pre('save', async function (next) {
-    if(!this.isModified("password")){
-        return next();
-    }
+userSchema.pre('save', async function () {
+    if(!this.isModified("password")) return;
     this.password = await bcryptjs.hash(this.password, 10);
-    next();
 })
 
 userSchema.methods = {
@@ -152,4 +137,3 @@ userSchema.methods = {
 
 
 export const User = mongoose.model('User', userSchema);
-

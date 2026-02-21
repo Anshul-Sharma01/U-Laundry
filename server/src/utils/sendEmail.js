@@ -3,10 +3,12 @@ import { ApiError } from "./ApiError.js";
 
 const sendEmail = async function ( email, subject, message ){
     try{
+        const port = Number(process.env.SMTP_PORT);
+
         let transporter = nodemailer.createTransport({
             host : process.env.SMTP_HOST,
-            port : process.env.SMTP_HOST,
-            secure : process.env.SMTP_PORT,
+            port,
+            secure : port === 465,
             auth : {
                 user : process.env.SMTP_USERNAME,
                 pass : process.env.SMTP_PASSWORD
@@ -14,8 +16,8 @@ const sendEmail = async function ( email, subject, message ){
             tls : {
                 rejectUnauthorized : false
             },
-            connectionTimeout : 5000,
-            socketTimeout : 5000
+            connectionTimeout : 10000,
+            socketTimeout : 10000
         })
 
         await transporter.sendMail({
@@ -26,8 +28,8 @@ const sendEmail = async function ( email, subject, message ){
         });
 
     }catch(err){
-        console.log(`Error sending email : ${err}`);
-        throw new ApiError(400, "Could not send email, please try again later...");
+        console.error(`Error sending email : ${err}`);
+        throw new ApiError(500, "Could not send email, please try again later...");
     }
 }
 

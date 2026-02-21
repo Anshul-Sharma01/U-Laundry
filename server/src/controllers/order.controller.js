@@ -8,367 +8,314 @@ import sendEmail from "../utils/sendEmail.js";
 import razorpayService from "../utils/razorpayService.js";
 import crypto from "crypto";
 
+const VALID_STATUSES = ['Order Placed', 'Pending', 'Prepared', 'Picked Up', 'Cancelled', 'Payment left'];
 
-const addNewOrder = asyncHandler(async(req, res, next) => {
-    try{
-        const { moneyAmount, totalClothes, currency} = req.body;
-        const userId = req.user._id;
+const addNewOrder = asyncHandler(async(req, res) => {
+    const { moneyAmount, totalClothes, currency = "INR" } = req.body;
+    const userId = req.user._id;
 
-        if(!moneyAmount || !totalClothes){
-            throw new ApiError(400, 'All fields are mandatory');
-        }
-
-        if(!["INR", "USD", "EUR"].includes(currency)){
-            throw new ApiError(400, "Invalid Currency");
-        }
-
-        const receipt = `receipt_${Math.floor(Math.random() * 100000)}`;
-        const amount = moneyAmount * 100;
-        
-        const paymentOrder = await razorpayService.createOrder(amount, currency, receipt);
-
-        const order = await Order.create({
-            moneyAmount : amount,
-            totalClothes,
-            user : userId,
-            razorpayOrderId : paymentOrder.id,
-            receipt,
-        })
-
-        if(!order){
-            throw new ApiError(400, "Order not created !!");
-        }
-
-        const user = await User.findByIdAndUpdate(
-            userId,
-            {$push : {history : order._id}},
-            {new : true, useFindAndModify : false}
-        )
-
-        const userEmail = user.email;
-
-        const subject = "Order confirmation Mail";
-        const msg = "Your Order has been successfully placed";
-
-        try {
-            await sendEmail(userEmail, subject, msg);
-        } catch (err) {
-            console.error("Failed to send Order confirmation emaik : ",err.message);
-        }
-
-        return res.status(201)
-        .json(
-            new ApiResponse(
-                201,
-                order,
-                "Order created successfully"
-            )
-        );
-
-
-    }catch(err){
-        console.error(`Error occurred while adding a new order : ${err}`);
-        throw new ApiError(500, err?.message || "Error occurred while placing new order");
+    if(!moneyAmount || !totalClothes){
+        throw new ApiError(400, 'Money amount and total clothes are required');
     }
+
+    if(!["INR", "USD", "EUR"].includes(currency)){
+        throw new ApiError(400, "Invalid currency. Supported: INR, USD, EUR");
+    }
+
+    if(Number(moneyAmount) <= 0 || Number(totalClothes) <= 0){
+        throw new ApiError(400, "Amount and clothes count must be positive numbers");
+    }
+
+    const receipt = `receipt_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+    const amountInPaisa = Math.round(Number(moneyAmount) * 100); // Razorpay expects amount in smallest currency unit (paisa)
+    
+    const paymentOrder = await razorpayService.createOrder(amountInPaisa, currency, receipt);
+
+    const order = await Order.create({
+        moneyAmount : amountInPaisa,
+        totalClothes : Number(totalClothes),
+        user : userId,
+        razorpayOrderId : paymentOrder.id,
+        receipt,
+    });
+
+    if(!order){
+        throw new ApiError(500, "Failed to create order");
+    }
+
+    await User.findByIdAndUpdate(
+        userId,
+        { $push : { history : order._id } },
+        { new : true }
+    );
+
+    // Send confirmation email (non-blocking — don't fail the order if email fails)
+    const user = await User.findById(userId);
+    if(user?.email){
+        sendEmail(
+            user.email,
+            "U-Laundry — Order Confirmation",
+            `<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #4CAF50;">Order Confirmed! ✅</h2>
+                <p>Your laundry order has been placed successfully.</p>
+                <p><strong>Order ID:</strong> ${order._id}</p>
+                <p><strong>Total Clothes:</strong> ${totalClothes}</p>
+                <p><strong>Amount:</strong> ₹${moneyAmount}</p>
+                <p style="color: #999; font-size: 14px;">You will receive status updates via email.</p>
+            </div>`
+        ).catch(err => console.error("Failed to send order confirmation email:", err.message));
+    }
+
+    return res.status(201).json(
+        new ApiResponse(201, order, "Order created successfully")
+    );
 })
 
 
-const updateOrderStatus = asyncHandler(async(req, res, next) => {
-    try{
-        const { orderId, status } = req.params;
+const updateOrderStatus = asyncHandler(async(req, res) => {
+    const { orderId, status } = req.params;
 
-        if(!isValidObjectId(orderId)){
-            throw new ApiError(400, "Invalid Order Id");
-        }
-        
-        if(!['Order Placed', 'Pending', 'Prepared', 'Picked Up', 'Cancelled', 'Payment Left'].includes(status)){
-            throw new ApiError(400, "Invalid Status");
-        }
-
-        const updatedOrder = await Order.findByIdAndUpdate(
-            orderId,
-            { $set : {status} },
-            {new : true, useFindAndModify : false}
-        );
-
-        const user = await User.findById(updatedOrder.user);
-        
-        const userEmail = user.email;
-        const subject = "Laundary Order Status Updated";
-        const msg = `Your Order status is updated to ${status}`;
-
-        try {
-            await sendEmail(userEmail, subject, msg);
-        } catch (err) {
-            console.error("Error occurred while sending status update email : ", err.message);
-        }
-
-        if(!updatedOrder){
-            throw new ApiError(400, "Order not found or could not be updated");
-        }
-
-
-
-        return res.status(200)
-        .json(new ApiResponse(200, updatedOrder, "Order status update successfully"));
-
-    }catch(err){
-        throw new ApiError(400, err?.message || "Error occurred while updating the order status");
+    if(!isValidObjectId(orderId)){
+        throw new ApiError(400, "Invalid Order Id");
     }
+    
+    if(!VALID_STATUSES.includes(status)){
+        throw new ApiError(400, `Invalid status. Valid statuses: ${VALID_STATUSES.join(', ')}`);
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+        orderId,
+        { $set : { status } },
+        { new : true }
+    );
+
+    // Null-check BEFORE trying to use the order
+    if(!updatedOrder){
+        throw new ApiError(404, "Order not found or could not be updated");
+    }
+
+    // Send status update email (non-blocking)
+    const user = await User.findById(updatedOrder.user);
+    if(user?.email){
+        sendEmail(
+            user.email,
+            "U-Laundry — Order Status Updated",
+            `<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #333;">Order Status Update</h2>
+                <p>Your order <strong>${orderId}</strong> status has been updated to:</p>
+                <div style="background: #f4f4f4; padding: 10px 20px; border-radius: 8px; text-align: center; margin: 15px 0;">
+                    <span style="font-size: 20px; font-weight: bold; color: #4CAF50;">${status}</span>
+                </div>
+            </div>`
+        ).catch(err => console.error("Failed to send status update email:", err.message));
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, updatedOrder, "Order status updated successfully")
+    );
 })
 
 
-const getOrderById = asyncHandler(async (req, res, next) => {
-    try{
-        const { orderId } = req.params;
+const getOrderById = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
 
-        if(!isValidObjectId(orderId)){
-            throw new ApiError(400, "Invalid Order Id");
-        }
-
-        const order = await Order.findById(orderId);
-
-        if(!order){
-            throw new ApiError(400, "Order does not exists");
-        }
-
-        return res.status(200)
-        .json(new ApiResponse(200, order, "Order details fetched successfully"));
-
-    }catch(err){
-        throw new ApiError(400, err?.message || "Error occurred while fetch order details");
+    if(!isValidObjectId(orderId)){
+        throw new ApiError(400, "Invalid Order Id");
     }
+
+    const order = await Order.findById(orderId).populate("user", "username name email hostelName roomNumber");
+
+    if(!order){
+        throw new ApiError(404, "Order not found");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, order, "Order details fetched successfully")
+    );
 })
 
 
-const getOrdersByUser = asyncHandler(async (req, res, next) => {
-    try{
-        let { page, limit } = req.query;
-        page = parseInt(page) || 1;
-        limit = parseInt(limit) || 5;
+const getOrdersByUser = asyncHandler(async (req, res) => {
+    let { page, limit } = req.query;
+    page = parseInt(page) || 1;
+    limit = parseInt(limit) || 5;
 
-        const skip = ( page - 1 ) * limit;
+    const skip = ( page - 1 ) * limit;
 
-        const totalOrders = await Order.countDocuments();
+    const { userId } = req.params;
+    if(!isValidObjectId(userId)){
+        throw new ApiError(400, "Invalid User Id");
+    }
 
-        
-        const { userId } = req.params;
-        if(!isValidObjectId(userId)){
-            throw new ApiError(400, "Invalid Order Id");
-        }
+    // Count only THIS user's orders (not all orders)
+    const totalOrders = await Order.countDocuments({ user : userId });
 
-        const userOrders = await Order.find({user : userId})
-            .skip(skip)
-            .limit(limit)
-            .sort({ createdAt : -1 });
-
-        if(totalOrders.length === 0){
-            return res.status(200).json(
-                new ApiResponse(
-                    200,
-                    {
-                        userOrders,
-                        totalOrders,
-                        totalPages : 0,
-                        currentPage : page
-                    },
-                    "User Orders doesn't exists"
-                )
-            );
-        }
-
-        const totalPages = Math.ceil(totalOrders / limit);
-        if(page > totalPages){
-            return res.status(200).json(
-                new ApiResponse(
-                    200,
-                    {
-                        userOrders : [],
-                        totalOrders,
-                        totalPages,
-                        currentPage : page
-                    },
-                    "Page exceeds total number of pages"
-                )
-            )
-        }
-
+    if(totalOrders === 0){
         return res.status(200).json(
-            new ApiResponse(
-                200, 
-                {
-                    userOrders,
-                    totalOrders,
-                    totalPages,
-                    currentPage : page
-                },
-                "User Orders fetched successfully"
-            )
+            new ApiResponse(200, {
+                userOrders : [],
+                totalOrders : 0,
+                totalPages : 0,
+                currentPage : page
+            }, "No orders found for this user")
         );
-
-    }catch(err){
-        throw new ApiError(400, "Error occurred while fetching User orders");
     }
+
+    const totalPages = Math.ceil(totalOrders / limit);
+    if(page > totalPages){
+        return res.status(200).json(
+            new ApiResponse(200, {
+                userOrders : [],
+                totalOrders,
+                totalPages,
+                currentPage : page
+            }, "Page exceeds total number of pages")
+        );
+    }
+
+    const userOrders = await Order.find({ user : userId })
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt : -1 });
+
+    return res.status(200).json(
+        new ApiResponse(200, {
+            userOrders,
+            totalOrders,
+            totalPages,
+            currentPage : page
+        }, "User orders fetched successfully")
+    );
 });
 
 
-const cancelOrder = asyncHandler(async( req, res, next) => {
-    try{    
-        const { orderId } = req.params;
-        const userId = req.user._id;
-        
-        if(!isValidObjectId(orderId)){
-            throw new ApiError(400, "Invalid Order Id");
-        }
-
-        const order = await Order.findOneAndUpdate(
-            { _id: orderId, user: userId, status: 'Payment left' },
-            { $set: { status: 'Cancelled' } },
-            { new: true, useFindAndModify: false }
-        );
-        
-
-        if(!order){
-            throw new ApiError(400, "Order cannot be cancelled or does not exists");
-        }
-
-        return res.status(200)
-        .json(
-            new ApiResponse(200, order, "Order cancelled successfully")
-        );
-    }catch(err){
-        throw new ApiError(400, "Error occurred while cancelling the order");
+const cancelOrder = asyncHandler(async( req, res) => {
+    const { orderId } = req.params;
+    const userId = req.user._id;
+    
+    if(!isValidObjectId(orderId)){
+        throw new ApiError(400, "Invalid Order Id");
     }
+
+    const order = await Order.findOneAndUpdate(
+        { _id: orderId, user: userId, status: 'Payment left' },
+        { $set: { status: 'Cancelled' } },
+        { new: true }
+    );
+
+    if(!order){
+        throw new ApiError(400, "Order cannot be cancelled (already processed or does not exist)");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, order, "Order cancelled successfully")
+    );
 })
 
 
-const getAllOrders = asyncHandler(async (req, res, next) => {
-    try {
-        let { page, limit } = req.query;
-        page = parseInt(page) || 1;
-        limit = parseInt(limit) || 3;
+const getAllOrders = asyncHandler(async (req, res) => {
+    let { page, limit } = req.query;
+    page = parseInt(page) || 1;
+    limit = parseInt(limit) || 3;
 
-        const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
-        // Corrected totalOrders count (excluding "Picked Up" orders)
-        const totalOrders = await Order.countDocuments();
+    const totalOrders = await Order.countDocuments();
 
-        const orders = await Order.find()
-            .skip(skip)
-            .limit(limit)
-            .sort({ createdAt: -1 })
-            .populate("user", "username name email");
-
-        const totalPages = Math.ceil(totalOrders / limit);
-        // console.log("Total pages:", totalPages);
-
-        // If the page exceeds total pages, return an empty response
-        if (page > totalPages) {
-            return res.status(200).json(
-                new ApiResponse(200, {
-                    orders: [],
-                    totalOrders,
-                    totalPages,
-                    currentPage: page,
-                }, "Page exceeds total number of pages")
-            );
-        }
-
-        // Return valid order data
+    if(totalOrders === 0){
         return res.status(200).json(
             new ApiResponse(200, {
-                orders,
+                orders: [],
+                totalOrders: 0,
+                totalPages: 0,
+                currentPage: page,
+            }, "No orders found")
+        );
+    }
+
+    const totalPages = Math.ceil(totalOrders / limit);
+
+    if (page > totalPages) {
+        return res.status(200).json(
+            new ApiResponse(200, {
+                orders: [],
                 totalOrders,
                 totalPages,
                 currentPage: page,
-            }, "Orders fetched successfully")
+            }, "Page exceeds total number of pages")
         );
-
-    } catch (err) {
-        console.error("Error occurred while fetching all orders:", err?.message);
-        next(new ApiError(400, err?.message || "Error fetching all orders"));
     }
+
+    const orders = await Order.find()
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 })
+        .populate("user", "username name email hostelName roomNumber studentId");
+
+    return res.status(200).json(
+        new ApiResponse(200, {
+            orders,
+            totalOrders,
+            totalPages,
+            currentPage: page,
+        }, "Orders fetched successfully")
+    );
 });
 
 
-const getOrdersByStatus = asyncHandler(async(req, res, next) => {
-    try{
-        const { status } = req.params;
-        const VALID_STATUSES = ['Order Placed', 'Pending', 'Prepared', 'Picked Up', 'Cancelled', 'Payment left'];
+const getOrdersByStatus = asyncHandler(async(req, res) => {
+    const { status } = req.params;
 
-        if (!VALID_STATUSES.includes(status)) {
-            throw new ApiError(400, "Invalid Status");
-        }
-        
-
-        const orders = await Order.find({ status });
-
-        if(!orders){
-            return res.status(200)
-            .json(
-                new ApiResponse(200, orders, "No orders exist for the given status.")
-            );
-        }
-
-        return res.status(200)
-        .json(
-            new ApiResponse(200, orders, "Orders fetched on the basis of status")
-        );
-
-    }catch(err){
-        throw new ApiError(400, err?.message || "Error occurred while fetching orders by status");
+    if (!VALID_STATUSES.includes(status)) {
+        throw new ApiError(400, `Invalid status. Valid statuses: ${VALID_STATUSES.join(', ')}`);
     }
+
+    const orders = await Order.find({ status })
+        .sort({ createdAt: -1 })
+        .populate("user", "username name email hostelName");
+
+    return res.status(200).json(
+        new ApiResponse(200, orders, orders.length === 0 ? "No orders found for this status" : "Orders fetched by status")
+    );
 })
 
 
-const verifyRazorpaySignature = asyncHandler(async (req, res, next) => {
-    try {
-        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+const verifyRazorpaySignature = asyncHandler(async (req, res) => {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
-        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-            throw new ApiError(400, "All fields are mandatory for payment verification");
-        }
-
-        // Fetch the corresponding order from the database
-        const order = await Order.findOne({ razorpayOrderId: razorpay_order_id });
-        if (!order) {
-            throw new ApiError(400, "Order not found");
-        }
-
-        // Create the signature for verification
-        const generated_signature = crypto
-            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-            .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-            .digest("hex");
-
-        // Compare the generated signature with the received one
-        if (generated_signature !== razorpay_signature) {
-            throw new ApiError(400, "Invalid payment signature");
-        }
-
-        // Update order status to "Paid"
-        order.moneyPaid = true;
-        order.razorpayPaymentId = razorpay_payment_id;
-        order.status = "Order Placed";
-        await order.save();
-
-        return res.status(200).json(
-            new ApiResponse(
-                200, 
-                order,
-                "Payment verified successfully"
-            )
-        );
-    } catch (err) {
-        console.error(`Error occurred while verifying payment signature: ${err.message}`);
-        throw new ApiError(400, err?.message || "Error occurred during payment verification");
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+        throw new ApiError(400, "All fields are required for payment verification");
     }
+
+    const order = await Order.findOne({ razorpayOrderId: razorpay_order_id });
+    if (!order) {
+        throw new ApiError(404, "Order not found");
+    }
+
+    // Verify the Razorpay signature
+    const generated_signature = crypto
+        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+        .digest("hex");
+
+    if (generated_signature !== razorpay_signature) {
+        throw new ApiError(400, "Invalid payment signature — possible tampering detected");
+    }
+
+    // Update order status
+    order.moneyPaid = true;
+    order.razorpayPaymentId = razorpay_payment_id;
+    order.status = "Order Placed";
+    await order.save();
+
+    return res.status(200).json(
+        new ApiResponse(200, order, "Payment verified successfully")
+    );
 });
 
 
 
 export {
-
     addNewOrder,
     updateOrderStatus,
     getOrderById,
@@ -378,4 +325,3 @@ export {
     getOrdersByStatus,
     verifyRazorpaySignature
 }
-

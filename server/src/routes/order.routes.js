@@ -3,44 +3,44 @@ import { verifyJWT, verifyModerator } from "../middlewares/auth.middleware.js";
 import { addNewOrder, cancelOrder, getAllOrders, getOrderById, getOrdersByStatus, getOrdersByUser, updateOrderStatus, verifyRazorpaySignature } from "../controllers/order.controller.js";
 
 
-
-
-
-
 const router = Router();
 
 
+// All order routes require authentication
 router.use(verifyJWT);
 
 
-router.route("/add")
-.post(addNewOrder);
+// ─── Student Routes ──────────────────────────────────────────────────────
 
-router.route("/view/:userId")
-.get(getOrdersByUser);
+router.route("/add")
+    .post(addNewOrder);
+
+// Fixed: Renamed from "/view/:userId" to "/user/:userId" to avoid conflict with "/details/:orderId"
+router.route("/user/:userId")
+    .get(getOrdersByUser);
 
 router.route("/cancel/:orderId")
-.delete(cancelOrder);
+    .delete(cancelOrder);
 
-router.route("/view/:orderId")
-.get(getOrderById);
-
-// laundary-moderator routes
-router.route("/update/:orderId/:status")
-.patch( verifyJWT,  verifyModerator, updateOrderStatus);
-
-
-router.route("/getall")
-.get(verifyJWT, verifyModerator, getAllOrders);
-
-router.route("/get/:status")
-.get(verifyModerator, getOrdersByStatus);
+// Fixed: Renamed from "/view/:orderId" to "/details/:orderId" to resolve route conflict
+router.route("/details/:orderId")
+    .get(getOrderById);
 
 router.route("/verify-signature")
-.post(verifyRazorpaySignature);
+    .post(verifyRazorpaySignature);
+
+
+// ─── Moderator Routes ───────────────────────────────────────────────────
+// Note: verifyJWT is already applied via router.use(), so not repeated here
+
+router.route("/update/:orderId/:status")
+    .patch(verifyModerator, updateOrderStatus);
+
+router.route("/getall")
+    .get(verifyModerator, getAllOrders);
+
+router.route("/get/:status")
+    .get(verifyModerator, getOrdersByStatus);
 
 
 export default router;
-
-
-
