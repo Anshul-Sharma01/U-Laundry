@@ -30,9 +30,11 @@ app.get("/", (req, res) => {
 // ─── Routes ──────────────────────────────────────────────────────────────
 import userRouter from "./routes/user.routes.js";
 import orderRouter from "./routes/order.routes.js";
+import laundryItemRouter from "./routes/laundryItem.routes.js";
 
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/order", orderRouter);
+app.use("/api/v1/laundry-items", laundryItemRouter);
 
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────

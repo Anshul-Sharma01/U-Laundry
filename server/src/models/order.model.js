@@ -1,16 +1,42 @@
 import mongoose, { Schema } from "mongoose";
 
 
+const orderItemSchema = new Schema({
+    laundryItem : {
+        type : Schema.Types.ObjectId,
+        ref : "LaundryItem",
+        required : [true, "Laundry item reference is required"]
+    },
+    quantity : {
+        type : Number,
+        required : [true, "Quantity is required"],
+        min : [1, "Quantity must be at least 1"]
+    }
+}, { _id : false });
+
+
 const orderSchema = new Schema({
     user : {
         type : Schema.Types.ObjectId,
         ref : "User",
         required : [true, "User reference is required"]
     },
+    items : {
+        type : [orderItemSchema],
+        validate : {
+            validator : function(arr) {
+                return arr && arr.length > 0;
+            },
+            message : "Order must contain at least one item"
+        }
+    },
     totalClothes : {
         type : Number,
-        required : [true, "Total number of clothes is required"],
-        min : [1, "Number of clothes must be at least 1"]
+        default : 0
+    },
+    moneyAmount: {
+        type: Number,
+        default : 0,
     },
     date : {
         type : Date,
@@ -21,11 +47,6 @@ const orderSchema = new Schema({
         type : String,
         enum : ['Order Placed', 'Pending', 'Prepared','Picked Up','Cancelled', 'Payment left'],
         default : 'Payment left'
-    },
-    moneyAmount: {
-        type: Number,
-        required: [true, "Payment amount is required"],
-        default : 0,
     },
     moneyPaid : {
         type : Boolean, 

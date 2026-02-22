@@ -1,5 +1,6 @@
 import { isValidObjectId } from "mongoose";
 import { Order } from "../models/order.model.js";
+import { LaundryItem } from "../models/laundryItem.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -11,47 +12,108 @@ import crypto from "crypto";
 const VALID_STATUSES = ['Order Placed', 'Pending', 'Prepared', 'Picked Up', 'Cancelled', 'Payment left'];
 
 const addNewOrder = asyncHandler(async(req, res) => {
-    const { moneyAmount, totalClothes, currency = "INR" } = req.body;
+    const { items, currency = "INR" } = req.body;
     const userId = req.user._id;
 
-    if(!moneyAmount || !totalClothes){
-        throw new ApiError(400, 'Money amount and total clothes are required');
+    // ── Validate items array ─────────────────────────────────────────────
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        throw new ApiError(400, "Items array is required and must not be empty");
     }
 
-    if(!["INR", "USD", "EUR"].includes(currency)){
+    if (!["INR", "USD", "EUR"].includes(currency)) {
         throw new ApiError(400, "Invalid currency. Supported: INR, USD, EUR");
     }
 
-    if(Number(moneyAmount) <= 0 || Number(totalClothes) <= 0){
-        throw new ApiError(400, "Amount and clothes count must be positive numbers");
+    // ── Validate each item against the LaundryItem catalog ───────────────
+    let totalClothes = 0;
+    let moneyAmount = 0;
+    const validatedItems = [];
+
+    // Collect all item IDs for a single bulk query
+    const itemIds = items.map(item => {
+        if (!item.laundryItem || !isValidObjectId(item.laundryItem)) {
+            throw new ApiError(400, `Invalid laundry item ID: ${item.laundryItem}`);
+        }
+        if (!item.quantity || Number(item.quantity) < 1) {
+            throw new ApiError(400, "Quantity must be at least 1 for each item");
+        }
+        return item.laundryItem;
+    });
+
+    // Check for duplicate item IDs in the same order
+    const uniqueIds = new Set(itemIds);
+    if (uniqueIds.size !== itemIds.length) {
+        throw new ApiError(400, "Duplicate items found in order. Combine quantities instead");
     }
 
+    // Fetch all referenced items in one query
+    const catalogItems = await LaundryItem.find({ _id: { $in: itemIds } });
+
+    if (catalogItems.length !== itemIds.length) {
+        throw new ApiError(400, "One or more items do not exist in the catalog");
+    }
+
+    // Build a map for quick lookup
+    const catalogMap = new Map();
+    for (const catItem of catalogItems) {
+        catalogMap.set(catItem._id.toString(), catItem);
+    }
+
+    // Validate each item
+    for (const item of items) {
+        const catItem = catalogMap.get(item.laundryItem.toString());
+
+        if (!catItem.isActive) {
+            throw new ApiError(400, `Item "${catItem.title}" is currently unavailable`);
+        }
+
+        const qty = Number(item.quantity);
+        if (qty > catItem.maxQuantityPerOrder) {
+            throw new ApiError(400, `Maximum ${catItem.maxQuantityPerOrder} units allowed for "${catItem.title}"`);
+        }
+
+        totalClothes += qty;
+        moneyAmount += catItem.pricePerUnit * qty;
+
+        validatedItems.push({
+            laundryItem: catItem._id,
+            quantity: qty
+        });
+    }
+
+    if (moneyAmount <= 0) {
+        throw new ApiError(400, "Order total must be greater than zero");
+    }
+
+    // ── Create Razorpay order ────────────────────────────────────────────
     const receipt = `receipt_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-    const amountInPaisa = Math.round(Number(moneyAmount) * 100); // Razorpay expects amount in smallest currency unit (paisa)
+    const amountInPaisa = Math.round(moneyAmount * 100);
     
     const paymentOrder = await razorpayService.createOrder(amountInPaisa, currency, receipt);
 
+    // ── Create the order ─────────────────────────────────────────────────
     const order = await Order.create({
-        moneyAmount : amountInPaisa,
-        totalClothes : Number(totalClothes),
-        user : userId,
-        razorpayOrderId : paymentOrder.id,
+        items: validatedItems,
+        totalClothes,
+        moneyAmount: amountInPaisa,
+        user: userId,
+        razorpayOrderId: paymentOrder.id,
         receipt,
     });
 
-    if(!order){
+    if (!order) {
         throw new ApiError(500, "Failed to create order");
     }
 
     await User.findByIdAndUpdate(
         userId,
-        { $push : { history : order._id } },
-        { new : true }
+        { $push: { history: order._id } },
+        { new: true }
     );
 
-    // Send confirmation email (non-blocking — don't fail the order if email fails)
+    // Send confirmation email (non-blocking)
     const user = await User.findById(userId);
-    if(user?.email){
+    if (user?.email) {
         sendEmail(
             user.email,
             "U-Laundry — Order Confirmation",
@@ -59,7 +121,7 @@ const addNewOrder = asyncHandler(async(req, res) => {
                 <h2 style="color: #4CAF50;">Order Confirmed! ✅</h2>
                 <p>Your laundry order has been placed successfully.</p>
                 <p><strong>Order ID:</strong> ${order._id}</p>
-                <p><strong>Total Clothes:</strong> ${totalClothes}</p>
+                <p><strong>Total Items:</strong> ${totalClothes}</p>
                 <p><strong>Amount:</strong> ₹${moneyAmount}</p>
                 <p style="color: #999; font-size: 14px;">You will receive status updates via email.</p>
             </div>`
@@ -89,7 +151,6 @@ const updateOrderStatus = asyncHandler(async(req, res) => {
         { new : true }
     );
 
-    // Null-check BEFORE trying to use the order
     if(!updatedOrder){
         throw new ApiError(404, "Order not found or could not be updated");
     }
@@ -123,7 +184,9 @@ const getOrderById = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Invalid Order Id");
     }
 
-    const order = await Order.findById(orderId).populate("user", "username name email hostelName roomNumber");
+    const order = await Order.findById(orderId)
+        .populate("user", "username name email hostelName roomNumber")
+        .populate("items.laundryItem", "title image pricePerUnit category");
 
     if(!order){
         throw new ApiError(404, "Order not found");
@@ -147,7 +210,6 @@ const getOrdersByUser = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Invalid User Id");
     }
 
-    // Count only THIS user's orders (not all orders)
     const totalOrders = await Order.countDocuments({ user : userId });
 
     if(totalOrders === 0){
@@ -176,7 +238,8 @@ const getOrdersByUser = asyncHandler(async (req, res) => {
     const userOrders = await Order.find({ user : userId })
         .skip(skip)
         .limit(limit)
-        .sort({ createdAt : -1 });
+        .sort({ createdAt : -1 })
+        .populate("items.laundryItem", "title image pricePerUnit category");
 
     return res.status(200).json(
         new ApiResponse(200, {
@@ -250,7 +313,8 @@ const getAllOrders = asyncHandler(async (req, res) => {
         .skip(skip)
         .limit(limit)
         .sort({ createdAt: -1 })
-        .populate("user", "username name email hostelName roomNumber studentId");
+        .populate("user", "username name email hostelName roomNumber studentId")
+        .populate("items.laundryItem", "title image pricePerUnit category");
 
     return res.status(200).json(
         new ApiResponse(200, {
@@ -272,7 +336,8 @@ const getOrdersByStatus = asyncHandler(async(req, res) => {
 
     const orders = await Order.find({ status })
         .sort({ createdAt: -1 })
-        .populate("user", "username name email hostelName");
+        .populate("user", "username name email hostelName")
+        .populate("items.laundryItem", "title image pricePerUnit category");
 
     return res.status(200).json(
         new ApiResponse(200, orders, orders.length === 0 ? "No orders found for this status" : "Orders fetched by status")
