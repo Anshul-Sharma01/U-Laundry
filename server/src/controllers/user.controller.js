@@ -99,8 +99,28 @@ const registerUser = asyncHandler(async(req, res) => {
     // Remove password from response
     const createdUser = await User.findById(user._id);
 
+    // Send confirmation email to user about pending verification
+    try {
+        await sendEmail(
+            email,
+            "U-Laundry — Registration Received",
+            `<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #C41E3A;">Welcome to U-Laundry!</h2>
+                <p style="color: #555; font-size: 16px;">Hi ${name},</p>
+                <p style="color: #555; font-size: 16px;">Your registration has been received successfully. Your account is currently <strong>pending admin verification</strong>.</p>
+                <div style="background: #FFF3F3; padding: 15px 25px; border-radius: 8px; border-left: 4px solid #C41E3A; margin: 20px 0;">
+                    <p style="color: #333; margin: 0;">You will receive another email once your account has been verified by the administrator. After verification, you can log in normally.</p>
+                </div>
+                <p style="color: #999; font-size: 14px;">Thank you for your patience!</p>
+            </div>`
+        );
+    } catch(_emailErr) {
+        // Non-critical: registration succeeded even if email fails
+        console.error("Failed to send registration confirmation email:", _emailErr);
+    }
+
     return res.status(201).json(
-        new ApiResponse(201, createdUser, "User registered successfully")
+        new ApiResponse(201, createdUser, "Registration successful! Your account is pending admin verification.")
     );
 })
 
@@ -122,6 +142,16 @@ const loginUser = asyncHandler(async(req, res) => {
     if(!isPasswordValid){
         return res.status(400).json(
             new ApiResponse(400, {}, "Incorrect password")
+        );
+    }
+
+    // Block login for unverified users
+    if(!user.isVerified || user.verificationStatus !== 'approved'){
+        const statusMsg = user.verificationStatus === 'rejected'
+            ? "Your account has been rejected by the administrator. Please contact support."
+            : "Your account is pending admin verification. You will be notified once approved.";
+        return res.status(403).json(
+            new ApiResponse(403, { verificationStatus: user.verificationStatus }, statusMsg)
         );
     }
 
@@ -512,6 +542,112 @@ const deleteUser = asyncHandler(async (req, res) => {
 })
 
 
+const getPendingUsers = asyncHandler(async (req, res) => {
+    const users = await User.find({ verificationStatus: 'pending' }).sort({ createdAt: -1 });
+
+    return res.status(200).json(
+        new ApiResponse(200, users, users.length === 0 ? "No pending users" : `${users.length} pending user(s) found`)
+    );
+})
+
+
+const verifyUserAccount = asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+
+    if(!isValidObjectId(userId)){
+        throw new ApiError(400, "Invalid User Id");
+    }
+
+    const user = await User.findById(userId);
+    if(!user){
+        throw new ApiError(404, "User not found");
+    }
+
+    if(user.verificationStatus === 'approved'){
+        return res.status(400).json(
+            new ApiResponse(400, {}, "User is already verified")
+        );
+    }
+
+    user.isVerified = true;
+    user.verificationStatus = 'approved';
+    user.verifiedAt = new Date();
+    user.verifiedBy = req.user._id;
+    user.verificationNote = '';
+    await user.save({ validateBeforeSave: false });
+
+    // Send approval email
+    try {
+        await sendEmail(
+            user.email,
+            "U-Laundry — Account Verified!",
+            `<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #16a34a;">Account Approved! ✓</h2>
+                <p style="color: #555; font-size: 16px;">Hi ${user.name},</p>
+                <p style="color: #555; font-size: 16px;">Your U-Laundry account has been <strong>verified and approved</strong> by the administrator.</p>
+                <div style="background: #F0FFF4; padding: 15px 25px; border-radius: 8px; border-left: 4px solid #16a34a; margin: 20px 0;">
+                    <p style="color: #333; margin: 0;">You can now log in and start using all U-Laundry services!</p>
+                </div>
+                <p style="text-align: center;">
+                    <a href="${process.env.FRONTEND_URL}/auth/sign-in" style="background-color: #C41E3A; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-size: 16px;">Log In Now</a>
+                </p>
+            </div>`
+        );
+    } catch(_emailErr) {
+        console.error("Failed to send approval email:", _emailErr);
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, user, "User verified successfully")
+    );
+})
+
+
+const rejectUserAccount = asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const { note } = req.body;
+
+    if(!isValidObjectId(userId)){
+        throw new ApiError(400, "Invalid User Id");
+    }
+
+    const user = await User.findById(userId);
+    if(!user){
+        throw new ApiError(404, "User not found");
+    }
+
+    user.isVerified = false;
+    user.verificationStatus = 'rejected';
+    user.verificationNote = note || 'No reason provided';
+    user.verifiedAt = new Date();
+    user.verifiedBy = req.user._id;
+    await user.save({ validateBeforeSave: false });
+
+    // Send rejection email
+    try {
+        await sendEmail(
+            user.email,
+            "U-Laundry — Account Verification Update",
+            `<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #C41E3A;">Account Not Approved</h2>
+                <p style="color: #555; font-size: 16px;">Hi ${user.name},</p>
+                <p style="color: #555; font-size: 16px;">Unfortunately, your U-Laundry account registration has not been approved.</p>
+                <div style="background: #FFF3F3; padding: 15px 25px; border-radius: 8px; border-left: 4px solid #C41E3A; margin: 20px 0;">
+                    <p style="color: #333; margin: 0;"><strong>Reason:</strong> ${note || 'No reason provided'}</p>
+                </div>
+                <p style="color: #999; font-size: 14px;">If you believe this is a mistake, please contact the university administration.</p>
+            </div>`
+        );
+    } catch(_emailErr) {
+        console.error("Failed to send rejection email:", _emailErr);
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, user, "User account rejected")
+    );
+})
+
+
 export {
     registerUser,
     loginUser,
@@ -526,5 +662,8 @@ export {
     updateUserAvatar,
     refreshAccessToken,
     getAllUsers,
-    deleteUser
+    deleteUser,
+    getPendingUsers,
+    verifyUserAccount,
+    rejectUserAccount
 }

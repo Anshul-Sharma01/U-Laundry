@@ -103,3 +103,28 @@ export const verifyAdmin = asyncHandler(async(req, _, next) => {
         throw new ApiError(403, err?.message || "Admin access required");
     }
 });
+
+
+/**
+ * verifyVerified — Checks if the authenticated user's account has been verified by admin.
+ * Blocks access for users whose accounts are still pending or rejected.
+ */
+export const verifyVerified = asyncHandler(async(req, _, next) => {
+    try {
+        const { user } = req;
+
+        // Admins and moderators bypass verification check
+        if(user.role === 'admin' || user.role === 'laundry-moderator'){
+            return next();
+        }
+
+        if(!user.isVerified || user.verificationStatus !== 'approved'){
+            throw new ApiError(403, "Your account is pending admin verification. Please wait for approval.");
+        }
+
+        next();
+    } catch(err) {
+        if(err instanceof ApiError) throw err;
+        throw new ApiError(403, err?.message || "Account verification check failed");
+    }
+});

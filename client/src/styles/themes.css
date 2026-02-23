@@ -1,0 +1,136 @@
+/**
+ * =========================================================
+ * U Brand – Design Tokens (Tailwind v4)
+ * =========================================================
+ *
+ * This file defines the global color system using Tailwind v4
+ * @theme directive.
+ *
+ * Brand Palette: Red · White · Light Blue
+ *
+ * DO NOT hardcode hex colors in JSX.
+ * ALWAYS use the utility classes generated from these tokens.
+ *
+ * ---------------------------------------------------------
+ * Usage example in JSX:
+ *
+ * <div className="bg-primary text-bg">
+ * <h1 className="text-secondary">Title</h1>
+ * <p className="text-text">Body text</p>
+ * <p className="text-muted">Muted description</p>
+ * <button className="bg-secondary text-bg">Action</button>
+ * ---------------------------------------------------------
+ */
+
+@theme {
+    /* =======================================================
+   * PRIMARY BRAND COLORS
+   * ======================================================= */
+
+    /**
+   * Brand Red
+   * Use for:
+   * - Navbar background
+   * - Footer background
+   * - Primary CTA sections
+   * - Logo accent areas
+   *
+   * Example:
+   * <nav className="bg-primary text-bg"></nav>
+   * <button className="bg-primary text-bg">Get Started</button>
+   */
+    --color-primary: #E00000;
+
+    /**
+   * Deep Red (Darker shade for hover/active states)
+   * Use for:
+   * - Headings
+   * - Primary button hover states
+   * - Active nav links
+   * - Borders on primary elements
+   *
+   * Example:
+   * <h1 className="text-secondary">Heading</h1>
+   * <button className="bg-primary hover:bg-secondary text-bg">Click</button>
+   */
+    --color-secondary: #A80000;
+
+    /**
+   * Light Blue (Accent)
+   * Use for:
+   * - Highlights
+   * - Icons
+   * - Link hover states
+   * - Badges and tags
+   * - Section dividers
+   *
+   * DO NOT use for long text blocks.
+   *
+   * Example:
+   * <span className="text-accent">Featured</span>
+   * <div className="border-l-4 border-accent pl-3">Quote</div>
+   */
+    --color-accent: #A8D8EA;
+
+    /* =======================================================
+   * BACKGROUND COLORS
+   * ======================================================= */
+
+    /**
+   * Light Blue Tint Background
+   * Use for:
+   * - Page background
+   * - Main content area
+   * - Section alternates
+   *
+   * Example:
+   * <main className="bg-bg min-h-screen"></main>
+   */
+    --color-bg: #EDF6FB;
+
+    /**
+   * Pure White Surface
+   * Use for:
+   * - Cards
+   * - Modals
+   * - Dropdowns
+   * - Form inputs
+   *
+   * Example:
+   * <div className="bg-surface shadow rounded-lg"></div>
+   */
+    --color-surface: #FFFFFF;
+
+    /* =======================================================
+   * TEXT COLORS
+   * ======================================================= */
+
+    /**
+   * Primary Text Color (Dark Charcoal)
+   * Use for:
+   * - Paragraphs
+   * - Article content
+   * - Form labels
+   *
+   * Example:
+   * <p className="text-text">
+   *   This is readable body content.
+   * </p>
+   */
+    --color-text: #1A1A1A;
+
+    /**
+   * Muted Text / Soft Grey
+   * Use for:
+   * - Descriptions
+   * - Helper text
+   * - Placeholder text
+   * - Disabled states
+   *
+   * Example:
+   * <p className="text-muted text-sm">
+   *   Optional information
+   * </p>
+   */
+    --color-muted: #6B7280;
+}

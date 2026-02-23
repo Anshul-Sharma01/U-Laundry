@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
-import { changePassword, deleteUser, forgotPassword, getAllUsers, getProfile, loginUser, logout, refreshAccessToken, registerUser, requestNewVerificationCode, resetPassword, updateUserAvatar, updateUserDetails, verifyVerificationCode } from "../controllers/user.controller.js";
+import { changePassword, deleteUser, forgotPassword, getAllUsers, getProfile, loginUser, logout, refreshAccessToken, registerUser, requestNewVerificationCode, resetPassword, updateUserAvatar, updateUserDetails, verifyVerificationCode, getPendingUsers, verifyUserAccount, rejectUserAccount } from "../controllers/user.controller.js";
 import { verifyJWT, hydrateAuth, verifyAdmin } from "../middlewares/auth.middleware.js"
 
 
@@ -59,6 +59,15 @@ router.route("/getall")
 
 router.route("/delete/:userId")
     .delete(verifyJWT, verifyAdmin, deleteUser);
+
+router.route("/pending")
+    .get(verifyJWT, verifyAdmin, getPendingUsers);
+
+router.route("/verify/:userId")
+    .patch(verifyJWT, verifyAdmin, verifyUserAccount);
+
+router.route("/reject/:userId")
+    .patch(verifyJWT, verifyAdmin, rejectUserAccount);
 
 
 export default router;

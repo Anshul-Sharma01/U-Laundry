@@ -63,9 +63,29 @@ const userSchema = new Schema({
     },
     role : {
         type : String,
-        enum : ['student', 'admin', 'laundry-moderator', 'guest'],
+        enum : ['student', 'admin', 'laundry-moderator'],
         default : 'student',
         select : false
+    },
+    isVerified : {
+        type : Boolean,
+        default : false
+    },
+    verificationStatus : {
+        type : String,
+        enum : ['pending', 'approved', 'rejected'],
+        default : 'pending'
+    },
+    verificationNote : {
+        type : String,
+        default : ''
+    },
+    verifiedAt : {
+        type : Date
+    },
+    verifiedBy : {
+        type : Schema.Types.ObjectId,
+        ref : 'User'
     },
     history : [
         {
