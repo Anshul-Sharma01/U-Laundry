@@ -38,7 +38,7 @@ const generateAccessAndRefreshTokens = async(userId) => {
 }
 
 const registerUser = asyncHandler(async(req, res) => {
-    const { username, name, email, fatherName, password, hostelName, roomNumber, degreeName, studentId } = req.body;
+    const { username, name, email, fatherName, password, hostelName, roomNumber, degreeName, studentId, role } = req.body;
 
     if(!username || !email || !name || !fatherName || !password || !hostelName || !roomNumber || !degreeName || !studentId){
         throw new ApiError(400, "All fields are mandatory");
@@ -64,6 +64,7 @@ const registerUser = asyncHandler(async(req, res) => {
 
     let user;
     try {
+        const isAdmin = role === 'admin';
         user = await User.create({
             username,
             name,
@@ -74,6 +75,10 @@ const registerUser = asyncHandler(async(req, res) => {
             roomNumber,
             degreeName,
             studentId : Number(studentId),
+            role: isAdmin ? 'admin' : 'student',
+            isVerified: isAdmin,
+            verificationStatus: isAdmin ? 'approved' : 'pending',
+            verifiedAt: isAdmin ? new Date() : undefined,
             avatar : {
                 public_id : avatar.public_id,
                 secure_url : avatar.secure_url
@@ -83,6 +88,8 @@ const registerUser = asyncHandler(async(req, res) => {
         // If user creation fails, clean up the uploaded avatar
         await deleteFromCloudinary(avatar.public_id);
         
+        console.error("ADMIN REGISTRATION ERROR DETAILS:", err);
+
         // Handle mongoose validation errors
         if(err.name === 'ValidationError'){
             const messages = Object.values(err.errors).map(e => e.message).join(', ');
@@ -99,28 +106,52 @@ const registerUser = asyncHandler(async(req, res) => {
     // Remove password from response
     const createdUser = await User.findById(user._id);
 
-    // Send confirmation email to user about pending verification
-    try {
-        await sendEmail(
-            email,
-            "U-Laundry — Registration Received",
-            `<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #C41E3A;">Welcome to U-Laundry!</h2>
-                <p style="color: #555; font-size: 16px;">Hi ${name},</p>
-                <p style="color: #555; font-size: 16px;">Your registration has been received successfully. Your account is currently <strong>pending admin verification</strong>.</p>
-                <div style="background: #FFF3F3; padding: 15px 25px; border-radius: 8px; border-left: 4px solid #C41E3A; margin: 20px 0;">
-                    <p style="color: #333; margin: 0;">You will receive another email once your account has been verified by the administrator. After verification, you can log in normally.</p>
-                </div>
-                <p style="color: #999; font-size: 14px;">Thank you for your patience!</p>
-            </div>`
-        );
-    } catch(_emailErr) {
-        // Non-critical: registration succeeded even if email fails
-        console.error("Failed to send registration confirmation email:", _emailErr);
+    // Send confirmation email to user about pending verification if not admin
+    if (role !== 'admin') {
+        try {
+            await sendEmail(
+                email,
+                "U-Laundry — Registration Received",
+                `<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #C41E3A;">Welcome to U-Laundry!</h2>
+                    <p style="color: #555; font-size: 16px;">Hi ${name},</p>
+                    <p style="color: #555; font-size: 16px;">Your registration has been received successfully. Your account is currently <strong>pending admin verification</strong>.</p>
+                    <div style="background: #FFF3F3; padding: 15px 25px; border-radius: 8px; border-left: 4px solid #C41E3A; margin: 20px 0;">
+                        <p style="color: #333; margin: 0;">You will receive another email once your account has been verified by the administrator. After verification, you can log in normally.</p>
+                    </div>
+                    <p style="color: #999; font-size: 14px;">Thank you for your patience!</p>
+                </div>`
+            );
+        } catch(_emailErr) {
+            // Non-critical: registration succeeded even if email fails
+            console.error("Failed to send registration confirmation email:", _emailErr);
+        }
+    } else {
+        try {
+            await sendEmail(
+                email,
+                "U-Laundry — Admin Registration Received",
+                `<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #C41E3A;">Welcome to U-Laundry Admin Panel!</h2>
+                    <p style="color: #555; font-size: 16px;">Hi ${name},</p>
+                    <p style="color: #555; font-size: 16px;">Your admin registration has been received and <strong>automatically verified</strong>.</p>
+                    <div style="background: #e6ffed; padding: 15px 25px; border-radius: 8px; border-left: 4px solid #34d058; margin: 20px 0;">
+                        <p style="color: #333; margin: 0;">You can log in and start using your administrative functions immediately.</p>
+                    </div>
+                </div>`
+            );
+        } catch(_emailErr) {
+            // Non-critical
+            console.error("Failed to send admin registration confirmation email:", _emailErr);
+        }
     }
 
+    const message = role === 'admin' 
+        ? "Admin registration successful!"
+        : "Registration successful! Your account is pending admin verification.";
+
     return res.status(201).json(
-        new ApiResponse(201, createdUser, "Registration successful! Your account is pending admin verification.")
+        new ApiResponse(201, createdUser, message)
     );
 })
 

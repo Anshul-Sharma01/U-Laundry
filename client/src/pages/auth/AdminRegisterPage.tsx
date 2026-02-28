@@ -24,7 +24,7 @@ const DEGREES = ['BCA', 'BE', 'PHARMA', 'NURS'];
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function SignupPage() {
+export default function AdminRegisterPage() {
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
     const { isLoading } = useSelector((s: RootState) => s.auth);
@@ -121,11 +121,12 @@ export default function SignupPage() {
         data.append('password', formData.password);
         data.append('hostelName', formData.hostelName);
         data.append('roomNumber', formData.roomNumber);
+        data.append('role', 'admin');
         if (formData.avatar) data.append('avatar', formData.avatar);
         const result = await dispatch(registerUser(data));
         if (registerUser.fulfilled.match(result)) {
-            toast.success('Registration successful!');
-            navigate('/auth/verification-pending');
+            toast.success('Admin Registration successful!');
+            navigate('/auth/sign-in');
         } else {
             toast.error((result.payload as string) || 'Registration failed');
         }
@@ -166,7 +167,7 @@ export default function SignupPage() {
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-accent opacity-70" />
 
                     <h1 className="relative text-white text-xl sm:text-2xl font-extrabold tracking-tight">
-                        Create Your Account
+                        Create Admin Account
                     </h1>
                     <p className="relative text-white/75 text-xs mt-0.5">
                         Step {currentStep} of {STEPS.length} — {STEPS[currentStep - 1].title}
@@ -370,8 +371,8 @@ export default function SignupPage() {
 
                             {/* Notice */}
                             <div className="bg-bg border border-accent/50 rounded-xl px-3 py-2.5 flex gap-2 items-start text-xs text-text">
-                                <HiExclamationTriangle size={16} className="text-primary shrink-0 mt-0.5" />
-                                <p className="m-0 leading-snug">Your account needs admin verification before you can log in.</p>
+                                <HiCheck size={16} className="text-green-500 shrink-0 mt-0.5" />
+                                <p className="m-0 leading-snug">As an admin, your account will be immediately verified to allow immediate login.</p>
                             </div>
                         </div>
                     )}

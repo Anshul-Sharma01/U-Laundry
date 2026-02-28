@@ -1,10 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
-
-// Configure axios defaults
-axios.defaults.withCredentials = true;
+import axiosInstance from '../../helpers/axiosInstance';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -35,6 +30,7 @@ interface AuthState {
     user: User | null;
     isLoggedIn: boolean;
     isLoading: boolean;
+    isHydrating: boolean;   // true during the initial session-restore request
     otpSent: boolean;
     otpEmail: string;
     error: string;
@@ -47,7 +43,7 @@ export const registerUser = createAsyncThunk(
     'auth/register',
     async (formData: FormData, { rejectWithValue }) => {
         try {
-            const { data } = await axios.post(`${API_URL}/users/register`, formData, {
+            const { data } = await axiosInstance.post('users/register', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
             return data;
@@ -61,7 +57,7 @@ export const loginUser = createAsyncThunk(
     'auth/login',
     async (credentials: { email: string; password: string }, { rejectWithValue }) => {
         try {
-            const { data } = await axios.post(`${API_URL}/users/login`, credentials);
+            const { data } = await axiosInstance.post('users/login', credentials);
             return data;
         } catch (err: any) {
             const response = err.response?.data;
@@ -81,7 +77,7 @@ export const verifyOtp = createAsyncThunk(
     'auth/verifyOtp',
     async (payload: { email: string; verifyCode: string }, { rejectWithValue }) => {
         try {
-            const { data } = await axios.post(`${API_URL}/users/verify-code`, payload);
+            const { data } = await axiosInstance.post('users/verify-code', payload);
             return data;
         } catch (err: any) {
             return rejectWithValue(err.response?.data?.message || 'OTP verification failed');
@@ -93,7 +89,7 @@ export const resendOtp = createAsyncThunk(
     'auth/resendOtp',
     async (email: string, { rejectWithValue }) => {
         try {
-            const { data } = await axios.post(`${API_URL}/users/request-new-code`, { email });
+            const { data } = await axiosInstance.post('users/request-new-code', { email });
             return data;
         } catch (err: any) {
             return rejectWithValue(err.response?.data?.message || 'Failed to resend OTP');
@@ -101,11 +97,17 @@ export const resendOtp = createAsyncThunk(
     }
 );
 
+/**
+ * getProfile — used by AuthHydrator on every app load.
+ * Calls GET /users/me → verifyJWT → hydrateAuth → returns the full user object.
+ * If the access token is expired, axiosInstance automatically tries to refresh it.
+ * If refresh also fails, the request rejects silently (user stays logged-out).
+ */
 export const getProfile = createAsyncThunk(
     'auth/getProfile',
     async (_, { rejectWithValue }) => {
         try {
-            const { data } = await axios.get(`${API_URL}/users/me`);
+            const { data } = await axiosInstance.get('users/me');
             return data;
         } catch (err: any) {
             return rejectWithValue(err.response?.data?.message || 'Session expired');
@@ -117,7 +119,7 @@ export const logoutUser = createAsyncThunk(
     'auth/logout',
     async (_, { rejectWithValue }) => {
         try {
-            const { data } = await axios.post(`${API_URL}/users/logout`);
+            const { data } = await axiosInstance.post('users/logout');
             return data;
         } catch (err: any) {
             return rejectWithValue(err.response?.data?.message || 'Logout failed');
@@ -131,6 +133,7 @@ const initialState: AuthState = {
     user: null,
     isLoggedIn: false,
     isLoading: false,
+    isHydrating: true,   // start as true — will flip to false after first getProfile resolves
     otpSent: false,
     otpEmail: '',
     error: '',
@@ -214,16 +217,19 @@ const authSlice = createSlice({
                 state.error = action.payload as string;
             })
 
-            // ── Get Profile (hydration) ──
+            // ── Get Profile (Auth Hydration) ──
             .addCase(getProfile.pending, (state) => {
-                state.isLoading = true;
+                state.isHydrating = true;
             })
             .addCase(getProfile.fulfilled, (state, action) => {
+                state.isHydrating = false;
                 state.isLoading = false;
                 state.isLoggedIn = true;
                 state.user = action.payload.data;
             })
             .addCase(getProfile.rejected, (state) => {
+                // Not an error — user simply has no valid session
+                state.isHydrating = false;
                 state.isLoading = false;
                 state.isLoggedIn = false;
                 state.user = null;

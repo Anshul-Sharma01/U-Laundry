@@ -1,6 +1,6 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { loginUser, verifyOtp, resendOtp, clearAuthMessages, resetOtpState } from '../../store/slices/authSlice';
 import type { AppDispatch, RootState } from '../../store/store';
 import toast from 'react-hot-toast';
@@ -10,7 +10,15 @@ import { LOGO } from '../../constants';
 export default function LoginPage() {
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
-    const { isLoading, otpSent } = useSelector((s: RootState) => s.auth);
+    const location = useLocation();
+    const { isLoggedIn, isLoading, otpSent } = useSelector((s: RootState) => s.auth);
+
+    useEffect(() => {
+        if (isLoggedIn) {
+            const redirectPath = location.state?.from?.pathname || '/';
+            navigate(redirectPath, { replace: true });
+        }
+    }, [isLoggedIn, navigate, location.state]);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
