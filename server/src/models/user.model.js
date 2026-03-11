@@ -13,16 +13,15 @@ const userSchema = new Schema({
     },
     studentId : {
         type : Number,
-        required : [true, "Student-Id is required"],
-        unique : [true, "Student Id must be unique"]
+        unique : true,
+        sparse : true
     },
     name : {
         type : String,
         required : [true, "Name is required"]
     },
     fatherName : {
-        type : String,
-        required : [true, "Father's name is required"]
+        type : String
     },
     email : {
         type : String,
@@ -39,11 +38,9 @@ const userSchema = new Schema({
     hostelName : {
         type : String,
         enum : ['BOSE','ARYABHATTA','SARABHAI','CHANKAYA','TERESA','GARGI','KALPANA'],
-        required : [true, "Hostel name is required !!"],
     },
     roomNumber : {
         type : String,
-        required : [true, "Room number is required"],
     },
     avatar : {
         public_id : {
@@ -58,8 +55,6 @@ const userSchema = new Schema({
     degreeName : {
         type : String,
         enum : ['BCA','BE','PHARMA', 'NURS'],
-        default : 'BE',
-        required : [true, "Degree Name is required"]
     },
     role : {
         type : String,

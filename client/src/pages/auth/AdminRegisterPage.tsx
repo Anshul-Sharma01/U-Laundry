@@ -5,8 +5,8 @@ import { registerUser, clearAuthMessages } from '../../store/slices/authSlice';
 import type { AppDispatch, RootState } from '../../store/store';
 import toast from 'react-hot-toast';
 import {
-    HiUser, HiLockClosed, HiHome, HiCheck, HiCamera,
-    HiClipboardDocumentList, HiExclamationTriangle, HiArrowLeft, HiArrowRight, HiPhoto,
+    HiLockClosed, HiCheck, HiCamera,
+    HiClipboardDocumentList, HiArrowLeft, HiArrowRight, HiPhoto,
     HiEye, HiEyeSlash,
 } from 'react-icons/hi2';
 
@@ -14,13 +14,9 @@ import {
 
 const STEPS = [
     { id: 1, title: 'Photo', icon: <HiCamera size={16} /> },
-    { id: 2, title: 'Personal', icon: <HiUser size={16} /> },
-    { id: 3, title: 'Account', icon: <HiLockClosed size={16} /> },
-    { id: 4, title: 'Hostel', icon: <HiHome size={16} /> },
+    { id: 2, title: 'Account', icon: <HiLockClosed size={16} /> },
+    { id: 3, title: 'Review', icon: <HiClipboardDocumentList size={16} /> },
 ];
-
-const HOSTELS = ['BOSE', 'ARYABHATTA', 'SARABHAI', 'CHANKAYA', 'TERESA', 'GARGI', 'KALPANA'];
-const DEGREES = ['BCA', 'BE', 'PHARMA', 'NURS'];
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -35,10 +31,9 @@ export default function AdminRegisterPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [formData, setFormData] = useState({
-        name: '', fatherName: '', studentId: '', degreeName: 'BE',
+        name: '',
         avatar: null as File | null,
         username: '', email: '', password: '', confirmPassword: '',
-        hostelName: '', roomNumber: '',
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -72,12 +67,6 @@ export default function AdminRegisterPage() {
         }
         if (step === 2) {
             if (!formData.name.trim()) e.name = 'Name is required';
-            if (!formData.fatherName.trim()) e.fatherName = "Father's name is required";
-            if (!formData.studentId.trim()) e.studentId = 'Student ID is required';
-            else if (isNaN(Number(formData.studentId))) e.studentId = 'Must be a number';
-            if (!formData.degreeName) e.degreeName = 'Degree is required';
-        }
-        if (step === 3) {
             if (!formData.username.trim())
                 e.username = 'Username is required';
             else if (formData.username.length < 10)
@@ -93,34 +82,25 @@ export default function AdminRegisterPage() {
             if (formData.password !== formData.confirmPassword)
                 e.confirmPassword = 'Passwords do not match';
         }
-        if (step === 4) {
-            if (!formData.hostelName) e.hostelName = 'Select your hostel';
-            if (!formData.roomNumber.trim()) e.roomNumber = 'Room number is required';
-        }
 
         setErrors(e);
         return Object.keys(e).length === 0;
     };
 
-    const nextStep = () => { if (validateStep(currentStep)) setCurrentStep(p => Math.min(p + 1, 4)); };
+    const nextStep = () => { if (validateStep(currentStep)) setCurrentStep(p => Math.min(p + 1, 3)); };
     const prevStep = () => setCurrentStep(p => Math.max(p - 1, 1));
 
     // ── Submit ──
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        if (!validateStep(4)) return;
+        if (!validateStep(2)) { setCurrentStep(2); return; }
         dispatch(clearAuthMessages());
         const data = new FormData();
         data.append('name', formData.name);
-        data.append('fatherName', formData.fatherName);
-        data.append('studentId', formData.studentId);
-        data.append('degreeName', formData.degreeName);
         data.append('username', formData.username);
         data.append('email', formData.email);
         data.append('password', formData.password);
-        data.append('hostelName', formData.hostelName);
-        data.append('roomNumber', formData.roomNumber);
         data.append('role', 'admin');
         if (formData.avatar) data.append('avatar', formData.avatar);
         const result = await dispatch(registerUser(data));
@@ -208,7 +188,7 @@ export default function AdminRegisterPage() {
                     {/* Step 1 — Profile Photo */}
                     {currentStep === 1 && (
                         <div className="flex flex-col items-center gap-4">
-                            <p className="text-sm text-muted text-center">Upload a clear photo so hostel staff can recognise you.</p>
+                            <p className="text-sm text-muted text-center">Upload a clear profile photo.</p>
 
                             <div
                                 onClick={() => fileInputRef.current?.click()}
@@ -252,30 +232,10 @@ export default function AdminRegisterPage() {
                         </div>
                     )}
 
-                    {/* Step 2 — Personal Info */}
+                    {/* Step 2 — Account Details */}
                     {currentStep === 2 && (
                         <div className="flex flex-col gap-3">
                             <Field label="Full Name" name="name" value={formData.name} onChange={handleChange} error={errors.name} placeholder="Enter your full name" />
-                            <Field label="Father's Name" name="fatherName" value={formData.fatherName} onChange={handleChange} error={errors.fatherName} placeholder="Enter father's name" />
-                            <Field label="Student ID" name="studentId" value={formData.studentId} onChange={handleChange} error={errors.studentId} placeholder="e.g. 2024001" />
-
-                            <div>
-                                <label className="block text-sm font-semibold text-text mb-1.5">Degree Program</label>
-                                <select
-                                    name="degreeName"
-                                    value={formData.degreeName}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2.5 bg-bg border-[1.5px] border-accent/60 rounded-xl text-sm text-text outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                >
-                                    {DEGREES.map(d => <option key={d} value={d}>{d}</option>)}
-                                </select>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Step 3 — Account Details */}
-                    {currentStep === 3 && (
-                        <div className="flex flex-col gap-3">
                             <Field label="Username" name="username" value={formData.username} onChange={handleChange} error={errors.username} placeholder="At least 10 characters" />
                             <Field label="Email Address" name="email" type="email" value={formData.email} onChange={handleChange} error={errors.email} placeholder="you@university.edu" />
 
@@ -337,25 +297,9 @@ export default function AdminRegisterPage() {
                         </div>
                     )}
 
-                    {/* Step 4 — Hostel & Review */}
-                    {currentStep === 4 && (
+                    {/* Step 3 — Review & Submit */}
+                    {currentStep === 3 && (
                         <div className="flex flex-col gap-3">
-                            <div>
-                                <label className="block text-sm font-semibold text-text mb-1.5">Hostel</label>
-                                <select
-                                    name="hostelName"
-                                    value={formData.hostelName}
-                                    onChange={handleChange}
-                                    className={`w-full px-4 py-2.5 bg-bg border-[1.5px] rounded-xl text-sm text-text outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 ${errors.hostelName ? 'border-primary' : 'border-accent/60'}`}
-                                >
-                                    <option value="">Select your hostel</option>
-                                    {HOSTELS.map(h => <option key={h} value={h}>{h}</option>)}
-                                </select>
-                                {errors.hostelName && <p className="text-primary text-xs mt-1 font-medium">{errors.hostelName}</p>}
-                            </div>
-
-                            <Field label="Room Number" name="roomNumber" value={formData.roomNumber} onChange={handleChange} error={errors.roomNumber} placeholder="e.g. A-101" />
-
                             {/* Compact summary */}
                             <div className="bg-bg border border-accent/60 rounded-xl p-3">
                                 <h4 className="text-xs font-bold text-text mb-2 flex items-center gap-1.5">
@@ -363,7 +307,6 @@ export default function AdminRegisterPage() {
                                 </h4>
                                 <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
                                     <SummaryItem label="Name" value={formData.name} />
-                                    <SummaryItem label="ID" value={formData.studentId} />
                                     <SummaryItem label="Username" value={formData.username} />
                                     <SummaryItem label="Email" value={formData.email} />
                                 </div>
@@ -389,7 +332,7 @@ export default function AdminRegisterPage() {
                             </button>
                         )}
 
-                        {currentStep < 4 ? (
+                        {currentStep < 3 ? (
                             <button
                                 type="button"
                                 onClick={nextStep}

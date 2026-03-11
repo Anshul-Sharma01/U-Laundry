@@ -13,11 +13,11 @@ interface User {
     username: string;
     name: string;
     email: string;
-    fatherName: string;
-    studentId: number;
-    hostelName: string;
-    roomNumber: string;
-    degreeName: string;
+    fatherName?: string;
+    studentId?: number;
+    hostelName?: string;
+    roomNumber?: string;
+    degreeName?: string;
     avatar: UserAvatar;
     role?: string;
     isVerified?: boolean;

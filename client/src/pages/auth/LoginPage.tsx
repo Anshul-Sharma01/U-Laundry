@@ -11,14 +11,15 @@ export default function LoginPage() {
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
     const location = useLocation();
-    const { isLoggedIn, isLoading, otpSent } = useSelector((s: RootState) => s.auth);
+    const { isLoggedIn, isLoading, otpSent, user } = useSelector((s: RootState) => s.auth);
 
     useEffect(() => {
-        if (isLoggedIn) {
-            const redirectPath = location.state?.from?.pathname || '/';
+        if (isLoggedIn && user) {
+            const defaultPath = user.role === 'admin' ? '/admin/dashboard' : '/';
+            const redirectPath = location.state?.from?.pathname || defaultPath;
             navigate(redirectPath, { replace: true });
         }
-    }, [isLoggedIn, navigate, location.state]);
+    }, [isLoggedIn, user, navigate, location.state]);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -95,7 +96,9 @@ export default function LoginPage() {
 
         if (verifyOtp.fulfilled.match(result)) {
             toast.success('Login successful!');
-            navigate('/');
+            const loggedInUser = result.payload.data.user;
+            const redirectPath = loggedInUser?.role === 'admin' ? '/admin/dashboard' : '/';
+            navigate(redirectPath, { replace: true });
         } else {
             toast.error((result.payload as string) || 'Invalid OTP');
             setOtpDigits(['', '', '', '', '', '']);

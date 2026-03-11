@@ -40,15 +40,29 @@ const generateAccessAndRefreshTokens = async(userId) => {
 const registerUser = asyncHandler(async(req, res) => {
     const { username, name, email, fatherName, password, hostelName, roomNumber, degreeName, studentId, role } = req.body;
 
-    if(!username || !email || !name || !fatherName || !password || !hostelName || !roomNumber || !degreeName || !studentId){
-        throw new ApiError(400, "All fields are mandatory");
+    const isAdmin = role === 'admin';
+
+    // Common fields required for all users
+    if(!username || !email || !name || !password){
+        throw new ApiError(400, "Username, name, email and password are required");
     }
 
-    const existingUser = await User.findOne({ $or: [{ username }, { email }, { studentId: Number(studentId) }] });
+    // Student-specific fields validation
+    if(!isAdmin){
+        if(!fatherName || !hostelName || !roomNumber || !degreeName || !studentId){
+            throw new ApiError(400, "All fields are mandatory for student registration");
+        }
+    }
+
+    // Build duplicate check query
+    const orConditions = [{ username }, { email }];
+    if(studentId) orConditions.push({ studentId: Number(studentId) });
+
+    const existingUser = await User.findOne({ $or: orConditions });
     if (existingUser) {
         if(existingUser.email === email) throw new ApiError(409, "Email already exists");
         if(existingUser.username === username) throw new ApiError(409, "Username already exists");
-        throw new ApiError(409, "Student ID already exists");
+        if(studentId) throw new ApiError(409, "Student ID already exists");
     }
 
     if(!req.file){
@@ -64,17 +78,12 @@ const registerUser = asyncHandler(async(req, res) => {
 
     let user;
     try {
-        const isAdmin = role === 'admin';
-        user = await User.create({
+        // Build user data — admins skip student-specific fields
+        const userData = {
             username,
             name,
             email,
-            fatherName,
             password,
-            hostelName,
-            roomNumber,
-            degreeName,
-            studentId : Number(studentId),
             role: isAdmin ? 'admin' : 'student',
             isVerified: isAdmin,
             verificationStatus: isAdmin ? 'approved' : 'pending',
@@ -83,7 +92,17 @@ const registerUser = asyncHandler(async(req, res) => {
                 public_id : avatar.public_id,
                 secure_url : avatar.secure_url
             }
-        });
+        };
+
+        if(!isAdmin){
+            userData.fatherName = fatherName;
+            userData.hostelName = hostelName;
+            userData.roomNumber = roomNumber;
+            userData.degreeName = degreeName;
+            userData.studentId = Number(studentId);
+        }
+
+        user = await User.create(userData);
     } catch(err) {
         // If user creation fails, clean up the uploaded avatar
         await deleteFromCloudinary(avatar.public_id);
@@ -188,19 +207,20 @@ const loginUser = asyncHandler(async(req, res) => {
 
     // Generate OTP using the dedicated Otp model
     const plainOtp = await Otp.generateOtp(email, 'login', 2);
+    console.log("otp : ", plainOtp);
 
-    await sendEmail(
-        user.email,
-        "U-Laundry Login OTP",
-        `<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #333;">U-Laundry Verification</h2>
-            <p style="color: #555; font-size: 16px;">Your login verification code is:</p>
-            <div style="background: #f4f4f4; padding: 15px 25px; border-radius: 8px; text-align: center; margin: 20px 0;">
-                <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #333;">${plainOtp}</span>
-            </div>
-            <p style="color: #999; font-size: 14px;">This code expires in 2 minutes. Do not share it with anyone.</p>
-        </div>`
-    );
+    // await sendEmail(
+    //     user.email,
+    //     "U-Laundry Login OTP",
+    //     `<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+    //         <h2 style="color: #333;">U-Laundry Verification</h2>
+    //         <p style="color: #555; font-size: 16px;">Your login verification code is:</p>
+    //         <div style="background: #f4f4f4; padding: 15px 25px; border-radius: 8px; text-align: center; margin: 20px 0;">
+    //             <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #333;">${plainOtp}</span>
+    //         </div>
+    //         <p style="color: #999; font-size: 14px;">This code expires in 2 minutes. Do not share it with anyone.</p>
+    //     </div>`
+    // );
 
     return res.status(200).json(
         new ApiResponse(200, {}, "Verification code sent to your email")
@@ -678,6 +698,77 @@ const rejectUserAccount = asyncHandler(async (req, res) => {
     );
 })
 
+const getAdminStats = asyncHandler(async (req, res) => {
+    // ── User stats ──
+    const totalUsers = await User.countDocuments();
+    const verifiedUsers = await User.countDocuments({ verificationStatus: 'approved' });
+    const pendingUsers = await User.countDocuments({ verificationStatus: 'pending' });
+    const rejectedUsers = await User.countDocuments({ verificationStatus: 'rejected' });
+
+    // ── Order stats ──
+    const totalOrders = await Order.countDocuments();
+
+    // Revenue (sum of moneyAmount for paid orders)
+    const revenueResult = await Order.aggregate([
+        { $match: { moneyPaid: true } },
+        { $group: { _id: null, total: { $sum: '$moneyAmount' } } }
+    ]);
+    const totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
+
+    // Orders by status
+    const ordersByStatus = await Order.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+    ]);
+
+    // 7-day order trend
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const dailyOrders = await Order.aggregate([
+        { $match: { createdAt: { $gte: sevenDaysAgo } } },
+        {
+            $group: {
+                _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                count: { $sum: 1 },
+                revenue: { $sum: '$moneyAmount' }
+            }
+        },
+        { $sort: { _id: 1 } }
+    ]);
+
+    // Fill in missing days with zero
+    const trend = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(sevenDaysAgo);
+        d.setDate(d.getDate() + i);
+        const dateStr = d.toISOString().split('T')[0];
+        const found = dailyOrders.find(o => o._id === dateStr);
+        trend.push({
+            date: dateStr,
+            day: d.toLocaleDateString('en-US', { weekday: 'short' }),
+            orders: found ? found.count : 0,
+            revenue: found ? found.revenue : 0,
+        });
+    }
+
+    // Recent orders (last 5)
+    const recentOrders = await Order.find()
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate('user', 'name email avatar hostelName')
+        .populate('items.laundryItem', 'title pricePerUnit');
+
+    return res.status(200).json(
+        new ApiResponse(200, {
+            users: { total: totalUsers, verified: verifiedUsers, pending: pendingUsers, rejected: rejectedUsers },
+            orders: { total: totalOrders, revenue: totalRevenue, byStatus: ordersByStatus, trend },
+            recentOrders,
+        }, "Admin stats fetched successfully")
+    );
+})
+
 
 export {
     registerUser,
@@ -696,5 +787,6 @@ export {
     deleteUser,
     getPendingUsers,
     verifyUserAccount,
-    rejectUserAccount
+    rejectUserAccount,
+    getAdminStats
 }

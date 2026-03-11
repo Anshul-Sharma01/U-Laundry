@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
-import { changePassword, deleteUser, forgotPassword, getAllUsers, getProfile, loginUser, logout, refreshAccessToken, registerUser, requestNewVerificationCode, resetPassword, updateUserAvatar, updateUserDetails, verifyVerificationCode, getPendingUsers, verifyUserAccount, rejectUserAccount } from "../controllers/user.controller.js";
+import { changePassword, deleteUser, forgotPassword, getAllUsers, getProfile, loginUser, logout, refreshAccessToken, registerUser, requestNewVerificationCode, resetPassword, updateUserAvatar, updateUserDetails, verifyVerificationCode, getPendingUsers, verifyUserAccount, rejectUserAccount, getAdminStats } from "../controllers/user.controller.js";
 import { verifyJWT, hydrateAuth, verifyAdmin } from "../middlewares/auth.middleware.js"
 
 
@@ -56,6 +56,9 @@ router.route("/update-avatar")
 
 router.route("/getall")
     .get(verifyJWT, verifyAdmin, getAllUsers);
+
+router.route("/admin/stats")
+    .get(verifyJWT, verifyAdmin, getAdminStats);
 
 router.route("/delete/:userId")
     .delete(verifyJWT, verifyAdmin, deleteUser);

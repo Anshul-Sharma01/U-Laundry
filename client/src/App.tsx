@@ -6,8 +6,13 @@ import LoginPage from './pages/auth/LoginPage'
 import VerificationPendingPage from './pages/auth/VerificationPendingPage'
 import AuthHydrator from './components/AuthHydrator'
 import ProtectedRoute from './components/ProtectedRoute'
+import AdminRoute from './components/AdminRoute'
 import NavigationLayout from './layouts/NavigationLayout'
 import HomePage from './pages/HomePage'
+import AdminDashboardPage from './pages/admin/AdminDashboardPage'
+import PendingVerificationsPage from './pages/admin/PendingVerificationsPage'
+import ManageUsersPage from './pages/admin/ManageUsersPage'
+import OrdersOverviewPage from './pages/admin/OrdersOverviewPage'
 import "./index.css"
 
 function App() {
@@ -31,9 +36,18 @@ function App() {
 
           {/* Protected Routes (Require Login) */}
           <Route element={<ProtectedRoute />}>
+            {/* Student / General Routes */}
             <Route element={<NavigationLayout />}>
               <Route path="/" element={<HomePage />} />
               {/* Future dashboard routes like /orders, /profile would go here */}
+            </Route>
+
+            {/* Admin-only Routes */}
+            <Route element={<AdminRoute />}>
+              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+              <Route path="/admin/pending" element={<PendingVerificationsPage />} />
+              <Route path="/admin/users" element={<ManageUsersPage />} />
+              <Route path="/admin/orders" element={<OrdersOverviewPage />} />
             </Route>
           </Route>
         </Routes>
