@@ -15,6 +15,7 @@ import PendingVerificationsPage from './pages/admin/PendingVerificationsPage'
 import ManageUsersPage from './pages/admin/ManageUsersPage'
 import OrdersOverviewPage from './pages/admin/OrdersOverviewPage'
 import LaundryModeratorPage from './pages/moderator/LaundryModeratorPage'
+import ProfilePage from './pages/ProfilePage'
 import "./index.css"
 
 function App() {
@@ -41,7 +42,8 @@ function App() {
             <Route element={<NavigationLayout />}>
               {/* Student / General Routes */}
               <Route path="/" element={<HomePage />} />
-              {/* Future dashboard routes like /orders, /profile would go here */}
+              <Route path="/profile" element={<ProfilePage />} />
+              {/* Future dashboard routes like /orders would go here */}
 
               {/* Admin-only Routes */}
               <Route element={<AdminRoute />}>

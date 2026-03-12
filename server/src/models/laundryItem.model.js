@@ -11,12 +11,10 @@ const laundryItemSchema = new Schema({
     },
     image : {
         public_id : {
-            type : String,
-            required : [true, "Image public_id is required"]
+            type : String
         },
         secure_url : {
-            type : String,
-            required : [true, "Image secure_url is required"]
+            type : String
         }
     },
     pricePerUnit : {

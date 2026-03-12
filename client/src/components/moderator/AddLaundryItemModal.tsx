@@ -35,8 +35,8 @@ export default function AddLaundryItemModal({ isOpen, onClose }: Props) {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!title.trim() || !pricePerUnit || !image) {
-            toast.error('Title, Price, and Image are required!');
+        if (!title.trim() || !pricePerUnit) {
+            toast.error('Title and Price are required!');
             return;
         }
 
@@ -46,7 +46,9 @@ export default function AddLaundryItemModal({ isOpen, onClose }: Props) {
         formData.append('maxQuantityPerOrder', maxQuantity);
         formData.append('category', category);
         formData.append('description', description);
-        formData.append('image', image);
+        if (image) {
+            formData.append('image', image);
+        }
 
         try {
             setLoading(true);
@@ -87,7 +89,6 @@ export default function AddLaundryItemModal({ isOpen, onClose }: Props) {
                                     accept="image/*"
                                     onChange={handleImageChange}
                                     className="absolute inset-0 opacity-0 cursor-pointer"
-                                    required
                                 />
                             </div>
                         </div>

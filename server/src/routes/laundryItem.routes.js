@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { verifyJWT, verifyAdmin } from "../middlewares/auth.middleware.js";
+import { verifyJWT, verifyAdmin, verifyModerator } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import {
     createItem,
@@ -23,21 +23,21 @@ router.use(verifyJWT);
 
 router.route("/")
     .get(getAllItems)
-    .post(verifyAdmin, upload.single("image"), createItem);
+    .post(verifyModerator, upload.single("image"), createItem);
 
 router.route("/admin/all")
-    .get(verifyAdmin, getAllItemsAdmin);
+    .get(verifyModerator, getAllItemsAdmin);
 
 
 // ─── Parameterized paths AFTER static ones ───────────────────────────────────
 
 router.route("/:itemId")
     .get(getItemById)
-    .patch(verifyAdmin, updateItem)
-    .delete(verifyAdmin, deleteItem);
+    .patch(verifyModerator, updateItem)
+    .delete(verifyModerator, deleteItem);
 
 router.route("/:itemId/image")
-    .patch(verifyAdmin, upload.single("image"), updateItemImage);
+    .patch(verifyModerator, upload.single("image"), updateItemImage);
 
 
 export default router;

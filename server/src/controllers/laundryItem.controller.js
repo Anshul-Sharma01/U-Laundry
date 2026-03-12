@@ -18,9 +18,7 @@ const createItem = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Price per unit cannot be negative");
     }
 
-    if (!req.file) {
-        throw new ApiError(400, "Item image is required");
-    }
+    // Image is now optional
 
     // Check for duplicate title
     const existingItem = await LaundryItem.findOne({ title: title.trim() });
@@ -28,18 +26,23 @@ const createItem = asyncHandler(async (req, res) => {
         throw new ApiError(409, "An item with this title already exists");
     }
 
-    // Upload image to Cloudinary
-    const cloudinaryResponse = await uploadOnCloudinary(req.file.path);
-    if (!cloudinaryResponse) {
-        throw new ApiError(500, "Failed to upload image to Cloudinary");
+    // Upload image to Cloudinary if provided
+    let cloudinaryResponse = null;
+    if (req.file) {
+        cloudinaryResponse = await uploadOnCloudinary(req.file.path);
+        if (!cloudinaryResponse) {
+            throw new ApiError(500, "Failed to upload image to Cloudinary");
+        }
     }
 
     const item = await LaundryItem.create({
         title: title.trim(),
-        image: {
-            public_id: cloudinaryResponse.public_id,
-            secure_url: cloudinaryResponse.secure_url
-        },
+        ...(cloudinaryResponse && {
+            image: {
+                public_id: cloudinaryResponse.public_id,
+                secure_url: cloudinaryResponse.secure_url
+            }
+        }),
         pricePerUnit: Number(pricePerUnit),
         maxQuantityPerOrder: maxQuantityPerOrder ? Number(maxQuantityPerOrder) : 10,
         category: category || "clothes",
