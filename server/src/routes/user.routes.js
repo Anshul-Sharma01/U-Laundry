@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
-import { changePassword, deleteUser, forgotPassword, getAllUsers, getProfile, loginUser, logout, refreshAccessToken, registerUser, requestNewVerificationCode, resetPassword, updateUserAvatar, updateUserDetails, verifyVerificationCode, getPendingUsers, verifyUserAccount, rejectUserAccount, getAdminStats } from "../controllers/user.controller.js";
-import { verifyJWT, hydrateAuth, verifyAdmin } from "../middlewares/auth.middleware.js"
+import { changePassword, deleteUser, forgotPassword, getAllUsers, getProfile, loginUser, logout, refreshAccessToken, registerUser, requestNewVerificationCode, resetPassword, updateUserAvatar, updateUserDetails, verifyVerificationCode, getPendingUsers, verifyUserAccount, rejectUserAccount, getAdminStats, getModeratorStats } from "../controllers/user.controller.js";
+import { verifyJWT, hydrateAuth, verifyAdmin, verifyModerator } from "../middlewares/auth.middleware.js"
 
 
 const router = Router();
@@ -71,6 +71,12 @@ router.route("/verify/:userId")
 
 router.route("/reject/:userId")
     .patch(verifyJWT, verifyAdmin, rejectUserAccount);
+
+
+// ─── Moderator Routes ────────────────────────────────────────────────────────
+
+router.route("/moderator/stats")
+    .get(verifyJWT, verifyModerator, getModeratorStats);
 
 
 export default router;

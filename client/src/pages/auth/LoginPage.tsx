@@ -4,8 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { loginUser, verifyOtp, resendOtp, clearAuthMessages, resetOtpState } from '../../store/slices/authSlice';
 import type { AppDispatch, RootState } from '../../store/store';
 import toast from 'react-hot-toast';
-import { HiLockClosed, HiEye, HiEyeSlash, HiArrowLeft, HiShieldCheck } from 'react-icons/hi2';
-import { LOGO } from '../../constants';
+import { HiLockClosed, HiEye, HiEyeSlash, HiArrowLeft } from 'react-icons/hi2';
 
 export default function LoginPage() {
     const dispatch = useDispatch<AppDispatch>();
@@ -15,7 +14,11 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (isLoggedIn && user) {
-            const defaultPath = user.role === 'admin' ? '/admin/dashboard' : '/';
+            const defaultPath = user.role === 'admin' 
+                ? '/admin/dashboard' 
+                : user.role === 'laundry-moderator'
+                    ? '/laundry-moderator'
+                    : '/';
             const redirectPath = location.state?.from?.pathname || defaultPath;
             navigate(redirectPath, { replace: true });
         }
@@ -97,7 +100,11 @@ export default function LoginPage() {
         if (verifyOtp.fulfilled.match(result)) {
             toast.success('Login successful!');
             const loggedInUser = result.payload.data.user;
-            const redirectPath = loggedInUser?.role === 'admin' ? '/admin/dashboard' : '/';
+            const redirectPath = loggedInUser?.role === 'admin' 
+                ? '/admin/dashboard' 
+                : loggedInUser?.role === 'laundry-moderator'
+                    ? '/laundry-moderator'
+                    : '/';
             navigate(redirectPath, { replace: true });
         } else {
             toast.error((result.payload as string) || 'Invalid OTP');

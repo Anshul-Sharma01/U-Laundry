@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import {
     HiLockClosed, HiCheck, HiCamera,
     HiClipboardDocumentList, HiArrowLeft, HiArrowRight, HiPhoto,
-    HiEye, HiEyeSlash,
+    HiEye, HiEyeSlash, HiShieldCheck, HiWrenchScrewdriver,
 } from 'react-icons/hi2';
 
 // ─── Step config ─────────────────────────────────────────────────────────────
@@ -30,6 +30,7 @@ export default function AdminRegisterPage() {
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
+    const [selectedRole, setSelectedRole] = useState<'admin' | 'laundry-moderator'>('admin');
     const [formData, setFormData] = useState({
         name: '',
         avatar: null as File | null,
@@ -101,11 +102,11 @@ export default function AdminRegisterPage() {
         data.append('username', formData.username);
         data.append('email', formData.email);
         data.append('password', formData.password);
-        data.append('role', 'admin');
+        data.append('role', selectedRole);
         if (formData.avatar) data.append('avatar', formData.avatar);
         const result = await dispatch(registerUser(data));
         if (registerUser.fulfilled.match(result)) {
-            toast.success('Admin Registration successful!');
+            toast.success(`${selectedRole === 'admin' ? 'Admin' : 'Moderator'} registration successful!`);
             navigate('/auth/sign-in');
         } else {
             toast.error((result.payload as string) || 'Registration failed');
@@ -147,7 +148,7 @@ export default function AdminRegisterPage() {
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-accent opacity-70" />
 
                     <h1 className="relative text-white text-xl sm:text-2xl font-extrabold tracking-tight">
-                        Create Admin Account
+                        {selectedRole === 'admin' ? 'Create Admin Account' : 'Create Moderator Account'}
                     </h1>
                     <p className="relative text-white/75 text-xs mt-0.5">
                         Step {currentStep} of {STEPS.length} — {STEPS[currentStep - 1].title}
@@ -235,6 +236,34 @@ export default function AdminRegisterPage() {
                     {/* Step 2 — Account Details */}
                     {currentStep === 2 && (
                         <div className="flex flex-col gap-3">
+                            {/* Role selector */}
+                            <div>
+                                <label className="block text-sm font-semibold text-text mb-2">Register as</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedRole('admin')}
+                                        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-[1.5px] text-sm font-semibold cursor-pointer transition-all ${
+                                            selectedRole === 'admin'
+                                                ? 'border-primary bg-primary/5 text-primary ring-2 ring-primary/20'
+                                                : 'border-accent/60 bg-bg text-muted hover:border-primary/50'
+                                        }`}
+                                    >
+                                        <HiShieldCheck size={18} /> Admin
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedRole('laundry-moderator')}
+                                        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-[1.5px] text-sm font-semibold cursor-pointer transition-all ${
+                                            selectedRole === 'laundry-moderator'
+                                                ? 'border-primary bg-primary/5 text-primary ring-2 ring-primary/20'
+                                                : 'border-accent/60 bg-bg text-muted hover:border-primary/50'
+                                        }`}
+                                    >
+                                        <HiWrenchScrewdriver size={18} /> Laundry Moderator
+                                    </button>
+                                </div>
+                            </div>
                             <Field label="Full Name" name="name" value={formData.name} onChange={handleChange} error={errors.name} placeholder="Enter your full name" />
                             <Field label="Username" name="username" value={formData.username} onChange={handleChange} error={errors.username} placeholder="At least 10 characters" />
                             <Field label="Email Address" name="email" type="email" value={formData.email} onChange={handleChange} error={errors.email} placeholder="you@university.edu" />
@@ -309,13 +338,18 @@ export default function AdminRegisterPage() {
                                     <SummaryItem label="Name" value={formData.name} />
                                     <SummaryItem label="Username" value={formData.username} />
                                     <SummaryItem label="Email" value={formData.email} />
+                                    <SummaryItem label="Role" value={selectedRole === 'admin' ? 'Admin' : 'Laundry Moderator'} />
                                 </div>
                             </div>
 
                             {/* Notice */}
                             <div className="bg-bg border border-accent/50 rounded-xl px-3 py-2.5 flex gap-2 items-start text-xs text-text">
                                 <HiCheck size={16} className="text-green-500 shrink-0 mt-0.5" />
-                                <p className="m-0 leading-snug">As an admin, your account will be immediately verified to allow immediate login.</p>
+                                <p className="m-0 leading-snug">
+                                    {selectedRole === 'admin'
+                                        ? 'As an admin, your account will be immediately verified to allow immediate login.'
+                                        : 'As a laundry moderator, your account will be immediately verified. You can manage orders and update statuses.'}
+                                </p>
                             </div>
                         </div>
                     )}

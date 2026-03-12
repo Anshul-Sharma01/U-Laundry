@@ -55,8 +55,22 @@ export default function Navbar() {
                     {/* Desktop Nav */}
                     {isLoggedIn ? (
                         <div className="hidden md:flex items-center gap-6">
-                            <NavLink to="/" icon={<HiHome size={18} />} label="Dashboard" />
-                            <NavLink to="/orders" icon={<HiBell size={18} />} label="Orders" />
+                            {user?.role === 'admin' ? (
+                                <>
+                                    <NavLink to="/" icon={<HiHome size={18} />} label="Home" />
+                                    <NavLink to="/admin/dashboard" icon={<HiBell size={18} />} label="Dashboard" />
+                                </>
+                            ) : user?.role === 'laundry-moderator' ? (
+                                <>
+                                    <NavLink to="/" icon={<HiHome size={18} />} label="Home" />
+                                    <NavLink to="/laundry-moderator" icon={<HiBell size={18} />} label="Dashboard" />
+                                </>
+                            ) : (
+                                <>
+                                    <NavLink to="/" icon={<HiHome size={18} />} label="Dashboard" />
+                                    <NavLink to="/orders" icon={<HiBell size={18} />} label="Orders" />
+                                </>
+                            )}
                             <NavLink to="/profile" icon={<HiUser size={18} />} label="Profile" />
 
                             <div className="h-6 w-[1.5px] bg-accent/40 mx-2" />
@@ -125,8 +139,22 @@ export default function Navbar() {
                                 </div>
                             </div>
 
-                            <MobileNavLink to="/" icon={<HiHome size={20} />} label="Dashboard" onClick={() => setMobileMenuOpen(false)} />
-                            <MobileNavLink to="/orders" icon={<HiBell size={20} />} label="Orders" onClick={() => setMobileMenuOpen(false)} />
+                            {user?.role === 'admin' ? (
+                                <>
+                                    <MobileNavLink to="/" icon={<HiHome size={20} />} label="Home" onClick={() => setMobileMenuOpen(false)} />
+                                    <MobileNavLink to="/admin/dashboard" icon={<HiBell size={20} />} label="Dashboard" onClick={() => setMobileMenuOpen(false)} />
+                                </>
+                            ) : user?.role === 'laundry-moderator' ? (
+                                <>
+                                    <MobileNavLink to="/" icon={<HiHome size={20} />} label="Home" onClick={() => setMobileMenuOpen(false)} />
+                                    <MobileNavLink to="/laundry-moderator" icon={<HiBell size={20} />} label="Dashboard" onClick={() => setMobileMenuOpen(false)} />
+                                </>
+                            ) : (
+                                <>
+                                    <MobileNavLink to="/" icon={<HiHome size={20} />} label="Dashboard" onClick={() => setMobileMenuOpen(false)} />
+                                    <MobileNavLink to="/orders" icon={<HiBell size={20} />} label="Orders" onClick={() => setMobileMenuOpen(false)} />
+                                </>
+                            )}
                             <MobileNavLink to="/profile" icon={<HiUser size={20} />} label="Profile" onClick={() => setMobileMenuOpen(false)} />
 
                             <button

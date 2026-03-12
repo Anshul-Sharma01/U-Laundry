@@ -40,7 +40,7 @@ const generateAccessAndRefreshTokens = async(userId) => {
 const registerUser = asyncHandler(async(req, res) => {
     const { username, name, email, fatherName, password, hostelName, roomNumber, degreeName, studentId, role } = req.body;
 
-    const isAdmin = role === 'admin';
+    const isStaffRole = role === 'admin' || role === 'laundry-moderator';
 
     // Common fields required for all users
     if(!username || !email || !name || !password){
@@ -48,7 +48,7 @@ const registerUser = asyncHandler(async(req, res) => {
     }
 
     // Student-specific fields validation
-    if(!isAdmin){
+    if(!isStaffRole){
         if(!fatherName || !hostelName || !roomNumber || !degreeName || !studentId){
             throw new ApiError(400, "All fields are mandatory for student registration");
         }
@@ -84,17 +84,17 @@ const registerUser = asyncHandler(async(req, res) => {
             name,
             email,
             password,
-            role: isAdmin ? 'admin' : 'student',
-            isVerified: isAdmin,
-            verificationStatus: isAdmin ? 'approved' : 'pending',
-            verifiedAt: isAdmin ? new Date() : undefined,
+            role: isStaffRole ? role : 'student',
+            isVerified: isStaffRole,
+            verificationStatus: isStaffRole ? 'approved' : 'pending',
+            verifiedAt: isStaffRole ? new Date() : undefined,
             avatar : {
                 public_id : avatar.public_id,
                 secure_url : avatar.secure_url
             }
         };
 
-        if(!isAdmin){
+        if(!isStaffRole){
             userData.fatherName = fatherName;
             userData.hostelName = hostelName;
             userData.roomNumber = roomNumber;
@@ -555,7 +555,7 @@ const refreshAccessToken = asyncHandler(async(req, res) => {
 
 
 const getAllUsers = asyncHandler(async (req, res) => {
-    const users = await User.find({});
+    const users = await User.find({}).select('+role');
 
     return res.status(200).json(
         new ApiResponse(200, users, users.length === 0 ? "No users found" : "Users fetched successfully")
@@ -569,9 +569,19 @@ const deleteUser = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Invalid User Id");
     }
 
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).select('+role');
     if(!user){
         throw new ApiError(404, "User not found");
+    }
+
+    // Block deletion of admin and moderator accounts
+    if(user.role === 'admin' || user.role === 'laundry-moderator'){
+        throw new ApiError(403, "Admin and moderator accounts are protected and cannot be deleted");
+    }
+
+    // Prevent self-deletion
+    if(req.user._id.toString() === userId){
+        throw new ApiError(403, "You cannot delete your own account from the admin panel");
     }
 
     // Clean up user's avatar from Cloudinary
@@ -770,6 +780,85 @@ const getAdminStats = asyncHandler(async (req, res) => {
 })
 
 
+const getModeratorStats = asyncHandler(async (req, res) => {
+    // ── Order stats ──
+    const totalOrders = await Order.countDocuments();
+
+    // Revenue (sum of moneyAmount for paid orders)
+    const revenueResult = await Order.aggregate([
+        { $match: { moneyPaid: true } },
+        { $group: { _id: null, total: { $sum: '$moneyAmount' } } }
+    ]);
+    const totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
+
+    // Monthly revenue just to be safe but let's use all time for now to match exactly what you had requested, maybe filter for month.
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const monthlyRevenueResult = await Order.aggregate([
+        { $match: { moneyPaid: true, createdAt: { $gte: startOfMonth } } },
+        { $group: { _id: null, total: { $sum: '$moneyAmount' } } }
+    ]);
+    const monthlyRevenue = monthlyRevenueResult.length > 0 ? monthlyRevenueResult[0].total : 0;
+
+    // Orders by status
+    const ordersByStatus = await Order.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+    ]);
+
+    // Active orders (Not completed, picked up or cancelled)
+    const activeOrdersMap = ['Pending', 'Prepared', 'Order Placed'];
+    const activeOrdersCount = await Order.countDocuments({ status: { $in: activeOrdersMap }});
+
+    // 7-day order trend
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const dailyOrders = await Order.aggregate([
+        { $match: { createdAt: { $gte: sevenDaysAgo } } },
+        {
+            $group: {
+                _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                count: { $sum: 1 },
+                revenue: { $sum: '$moneyAmount' }
+            }
+        },
+        { $sort: { _id: 1 } }
+    ]);
+
+    // Fill in missing days
+    const trend = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(sevenDaysAgo);
+        d.setDate(d.getDate() + i);
+        const dateStr = d.toISOString().split('T')[0];
+        const found = dailyOrders.find(o => o._id === dateStr);
+        trend.push({
+            date: dateStr,
+            day: d.toLocaleDateString('en-US', { weekday: 'short' }),
+            orders: found ? found.count : 0,
+            revenue: found ? found.revenue : 0,
+        });
+    }
+
+    // Recent orders (last 5)
+    const recentOrders = await Order.find()
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate('user', 'name email avatar hostelName roomNumber')
+        .populate('items.laundryItem', 'title pricePerUnit');
+
+    return res.status(200).json(
+        new ApiResponse(200, {
+            orders: { total: totalOrders, active: activeOrdersCount, revenue: totalRevenue, monthlyRevenue, byStatus: ordersByStatus, trend },
+            recentOrders,
+        }, "Moderator stats fetched successfully")
+    );
+});
+
 export {
     registerUser,
     loginUser,
@@ -788,5 +877,6 @@ export {
     getPendingUsers,
     verifyUserAccount,
     rejectUserAccount,
-    getAdminStats
+    getAdminStats,
+    getModeratorStats
 }
