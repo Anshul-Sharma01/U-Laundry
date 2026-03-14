@@ -6,6 +6,10 @@ import { addNewOrder, cancelOrder, getAllOrders, getOrderById, getOrdersByStatus
 const router = Router();
 
 
+// Note: Webhook route is mounted in app.js BEFORE global body parsers 
+// to ensure raw body availability for signature verification.
+
+
 // All order routes require authentication
 router.use(verifyJWT);
 
@@ -15,14 +19,12 @@ router.use(verifyJWT);
 router.route("/add")
     .post(addNewOrder);
 
-// Fixed: Renamed from "/view/:userId" to "/user/:userId" to avoid conflict with "/details/:orderId"
 router.route("/user/:userId")
     .get(getOrdersByUser);
 
 router.route("/cancel/:orderId")
     .delete(cancelOrder);
 
-// Fixed: Renamed from "/view/:orderId" to "/details/:orderId" to resolve route conflict
 router.route("/details/:orderId")
     .get(getOrderById);
 
@@ -31,7 +33,6 @@ router.route("/verify-signature")
 
 
 // ─── Moderator Routes ───────────────────────────────────────────────────
-// Note: verifyJWT is already applied via router.use(), so not repeated here
 
 router.route("/update/:orderId/:status")
     .patch(verifyModerator, updateOrderStatus);

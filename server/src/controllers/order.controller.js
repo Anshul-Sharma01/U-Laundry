@@ -116,20 +116,29 @@ const addNewOrder = asyncHandler(async(req, res) => {
     if (user?.email) {
         sendEmail(
             user.email,
-            "U-Laundry — Order Confirmation",
-            `<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #4CAF50;">Order Confirmed! ✅</h2>
-                <p>Your laundry order has been placed successfully.</p>
+            "U-Laundry — Order Received (Payment Pending)",
+            `<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
+                <h2 style="color: #FF9800;">Order Received! 🛎️</h2>
+                <p>Your laundry order has been initiated.</p>
+                <div style="background: #FFF3E0; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <p style="margin: 0;"><strong>Status:</strong> Payment Pending</p>
+                    <p style="margin: 5px 0 0 0;"><strong>Amount:</strong> ₹${moneyAmount}</p>
+                </div>
+                <p>Please complete the payment on the dashboard to confirm your pickup.</p>
                 <p><strong>Order ID:</strong> ${order._id}</p>
-                <p><strong>Total Items:</strong> ${totalClothes}</p>
-                <p><strong>Amount:</strong> ₹${moneyAmount}</p>
-                <p style="color: #999; font-size: 14px;">You will receive status updates via email.</p>
+                <p style="color: #999; font-size: 14px;">If you've already paid, this will update automatically soon.</p>
             </div>`
-        ).catch(err => console.error("Failed to send order confirmation email:", err.message));
+        ).catch(err => console.error("Failed to send order received email:", err.message));
     }
 
     return res.status(201).json(
-        new ApiResponse(201, order, "Order created successfully")
+        new ApiResponse(201, {
+            order,
+            razorpayOrderId: paymentOrder.id,
+            key_id: process.env.RAZORPAY_KEY_ID,
+            amount: amountInPaisa,
+            currency,
+        }, "Order created successfully")
     );
 })
 
@@ -260,18 +269,40 @@ const cancelOrder = asyncHandler(async( req, res) => {
         throw new ApiError(400, "Invalid Order Id");
     }
 
-    const order = await Order.findOneAndUpdate(
-        { _id: orderId, user: userId, status: 'Payment left' },
-        { $set: { status: 'Cancelled' } },
-        { new: true }
-    );
+    const order = await Order.findOne({ _id: orderId, user: userId });
 
     if(!order){
-        throw new ApiError(400, "Order cannot be cancelled (already processed or does not exist)");
+        throw new ApiError(404, "Order not found");
     }
 
+    // Only allow cancellation for 'Payment left' or 'Order Placed' 
+    if (!['Payment left', 'Order Placed'].includes(order.status)) {
+        throw new ApiError(400, `Order cannot be cancelled — current status: ${order.status}`);
+    }
+
+    // If the order was already paid, initiate a refund via Razorpay
+    if (order.moneyPaid && order.razorpayPaymentId) {
+        try {
+            const refund = await razorpayService.createRefund(
+                order.razorpayPaymentId,
+                order.moneyAmount
+            );
+            order.refundId = refund.id;
+            order.refundStatus = 'initiated';
+        } catch (refundErr) {
+            console.error("Refund failed:", refundErr.message);
+            order.refundStatus = 'failed';
+            // Still cancel the order even if refund fails — can be retried manually
+        }
+    }
+
+    order.status = 'Cancelled';
+    await order.save();
+
     return res.status(200).json(
-        new ApiResponse(200, order, "Order cancelled successfully")
+        new ApiResponse(200, order, order.refundId 
+            ? "Order cancelled and refund initiated" 
+            : "Order cancelled successfully")
     );
 })
 
@@ -357,21 +388,46 @@ const verifyRazorpaySignature = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Order not found");
     }
 
-    // Verify the Razorpay signature
-    const generated_signature = crypto
-        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-        .digest("hex");
+    // Idempotency guard: if already paid, return success immediately
+    if (order.moneyPaid) {
+        return res.status(200).json(
+            new ApiResponse(200, order, "Payment already verified")
+        );
+    }
 
-    if (generated_signature !== razorpay_signature) {
+    // Verify the Razorpay signature using the service
+    const body = `${razorpay_order_id}|${razorpay_payment_id}`;
+    const isValid = razorpayService.verifySignature(body, razorpay_signature);
+
+    if (!isValid) {
         throw new ApiError(400, "Invalid payment signature — possible tampering detected");
     }
 
-    // Update order status
+    // Update order with payment details and audit trail
     order.moneyPaid = true;
     order.razorpayPaymentId = razorpay_payment_id;
+    order.razorpaySignature = razorpay_signature;
     order.status = "Order Placed";
     await order.save();
+
+    // Send confirmation email (non-blocking)
+    const user = await User.findById(order.user);
+    if (user?.email) {
+        sendEmail(
+            user.email,
+            "U-Laundry — Order Confirmed ✅",
+            `<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
+                <h2 style="color: #4CAF50;">Order Confirmed! ✅</h2>
+                <p>Your payment for order <strong>${order._id}</strong> has been successfully verified.</p>
+                <div style="background: #E8F5E9; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <p style="margin: 0;"><strong>Status:</strong> Paid &amp; Confirmed</p>
+                    <p style="margin: 5px 0 0 0;"><strong>Payment ID:</strong> ${razorpay_payment_id}</p>
+                </div>
+                <p>Your laundry collection will be scheduled shortly.</p>
+                <p style="color: #999; font-size: 14px;">Thank you for choosing U-Laundry!</p>
+            </div>`
+        ).catch(err => console.error("Failed to send payment confirmation email:", err.message));
+    }
 
     return res.status(200).json(
         new ApiResponse(200, order, "Payment verified successfully")

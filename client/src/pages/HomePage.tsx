@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../store/store';
 import { 
     HiClock, HiOutlinePlus, 
-    HiOutlineMinus, HiOutlineShoppingCart, HiOutlineReceiptRefund 
+    HiOutlineMinus, HiOutlineShoppingCart, HiOutlineReceiptRefund,
+    HiExclamationTriangle, HiXMark, HiCreditCard
 } from 'react-icons/hi2';
 import axiosInstance from '../helpers/axiosInstance';
 import toast from 'react-hot-toast';
@@ -25,6 +26,8 @@ interface Order {
     moneyAmount: number;
     status: string;
     createdAt: string;
+    razorpayOrderId?: string;
+    moneyPaid?: boolean;
 }
 
 export default function HomePage() {
@@ -37,13 +40,17 @@ export default function HomePage() {
     
     const [cart, setCart] = useState<{ [key: string]: number }>({});
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+    const [isCompletingPayment, setIsCompletingPayment] = useState(false);
+    const [isCancellingOrder, setIsCancellingOrder] = useState(false);
 
-    const fetchLaundryItems = async () => {
+    // ── Pending payment order (status === 'Payment left') ────────────────
+    const pendingOrder = orders.find(o => o.status === 'Payment left');
+
+    const fetchLaundryItems = useCallback(async () => {
         try {
             setLoadingItems(true);
             const { data } = await axiosInstance.get('/laundry-items');
             if (data?.data) {
-                // Filter active items (fallback, though endpoints should return active only)
                 setLaundryItems(data.data.filter((item: LaundryItem) => item.isActive));
             }
         } catch (error: any) {
@@ -51,9 +58,9 @@ export default function HomePage() {
         } finally {
             setLoadingItems(false);
         }
-    };
+    }, []);
 
-    const fetchOrders = async () => {
+    const fetchOrders = useCallback(async () => {
         if (!user?._id) return;
         try {
             setLoadingOrders(true);
@@ -66,14 +73,14 @@ export default function HomePage() {
         } finally {
             setLoadingOrders(false);
         }
-    };
+    }, [user?._id]);
 
     useEffect(() => {
         if (user?._id) {
             fetchLaundryItems();
             fetchOrders();
         }
-    }, [user?._id]);
+    }, [user?._id, fetchLaundryItems, fetchOrders]);
 
     const handleQuantityChange = (itemId: string, delta: number, maxQty: number) => {
         setCart(prev => {
@@ -90,6 +97,71 @@ export default function HomePage() {
         });
     };
 
+    // ── Open Razorpay Checkout ────────────────────────────────────────────
+    const openRazorpayCheckout = useCallback((
+        razorpayOrderId: string,
+        keyId: string,
+        amount: number,
+        currency: string,
+        orderId: string,
+    ) => {
+        if (!window.Razorpay) {
+            toast.error("Payment gateway not loaded. Please refresh the page.");
+            return;
+        }
+
+        const options: RazorpayOptions = {
+            key: keyId,
+            amount,
+            currency,
+            name: "U-Laundry",
+            description: `Order #${orderId.slice(-6).toUpperCase()}`,
+            order_id: razorpayOrderId,
+            prefill: {
+                name: user?.name || "",
+                email: user?.email || "",
+            },
+            theme: {
+                color: "#6366f1",
+            },
+            handler: async (response: RazorpayPaymentResponse) => {
+                // Payment successful — verify signature on backend
+                try {
+                    await axiosInstance.post('/order/verify-signature', {
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_signature: response.razorpay_signature,
+                    });
+                    toast.success("Payment verified! Order placed successfully 🎉");
+                    setCart({});
+                    fetchOrders();
+                } catch (err: any) {
+                    toast.error(err.response?.data?.message || "Payment verification failed. Contact support.");
+                    fetchOrders(); // Refresh to show current state
+                }
+            },
+            modal: {
+                confirm_close: true,
+                ondismiss: () => {
+                    toast("Payment cancelled. You can complete it later.", { icon: "⚠️" });
+                    fetchOrders(); // Refresh to show the "Payment left" order
+                },
+            },
+        };
+
+        const rzp = new window.Razorpay(options);
+
+        rzp.on("payment.failed", (response: any) => {
+            toast.error(
+                response?.error?.description || "Payment failed. Please try again."
+            );
+            fetchOrders();
+        });
+
+        rzp.open();
+    }, [user, fetchOrders]);
+
+    // ── Place New Order ───────────────────────────────────────────────────
     const handlePlaceOrder = async () => {
         const itemsPayload = Object.entries(cart).map(([laundryItem, quantity]) => ({
             laundryItem,
@@ -102,14 +174,61 @@ export default function HomePage() {
 
         try {
             setIsPlacingOrder(true);
-            const { data } = await axiosInstance.post('/orders/add', { items: itemsPayload });
-            toast.success("Order Placed Successfully!");
-            setCart({});
-            fetchOrders(); // Refresh order history
+            const { data } = await axiosInstance.post('/order/add', { items: itemsPayload });
+            
+            const { razorpayOrderId, key_id, amount, currency, order } = data.data;
+
+            // Open Razorpay Checkout modal
+            openRazorpayCheckout(razorpayOrderId, key_id, amount, currency, order._id);
+
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to place order');
+            toast.error(error.response?.data?.message || 'Failed to create order');
         } finally {
             setIsPlacingOrder(false);
+        }
+    };
+
+    // ── Complete Pending Payment ──────────────────────────────────────────
+    const handleCompletePayment = async () => {
+        if (!pendingOrder?.razorpayOrderId) {
+            toast.error("Invalid pending order. Please start a new order.");
+            return;
+        }
+
+        setIsCompletingPayment(true);
+
+        try {
+            // Re-open Razorpay checkout with the same order ID
+            const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID as string;
+            
+            openRazorpayCheckout(
+                pendingOrder.razorpayOrderId,
+                keyId,
+                pendingOrder.moneyAmount,
+                "INR",
+                pendingOrder._id,
+            );
+        } catch (error: any) {
+            // If the Razorpay order expired, show error + auto-cancel
+            toast.error("Payment session expired. Please cancel and start a new order.");
+        } finally {
+            setIsCompletingPayment(false);
+        }
+    };
+
+    // ── Cancel Pending Order (Start New) ─────────────────────────────────
+    const handleCancelPending = async () => {
+        if (!pendingOrder?._id) return;
+
+        try {
+            setIsCancellingOrder(true);
+            await axiosInstance.delete(`/order/cancel/${pendingOrder._id}`);
+            toast.success("Previous order cancelled. You can place a new order now.");
+            fetchOrders();
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Failed to cancel order");
+        } finally {
+            setIsCancellingOrder(false);
         }
     };
 
@@ -154,6 +273,67 @@ export default function HomePage() {
                     </p>
                 </div>
             </div>
+
+            {/* ─── Pending Payment Banner ─────────────────────────────────────── */}
+            {pendingOrder && (
+                <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-[2rem] border-2 border-orange-200 shadow-lg overflow-hidden animate-fade-in">
+                    <div className="px-6 sm:px-8 py-6">
+                        <div className="flex items-start gap-4">
+                            <div className="w-14 h-14 rounded-2xl bg-orange-100 border-2 border-orange-200 flex items-center justify-center shrink-0 shadow-sm">
+                                <HiExclamationTriangle className="w-7 h-7 text-orange-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-lg font-extrabold text-orange-800 mb-1">
+                                    Pending Payment — Order #{pendingOrder._id.slice(-6).toUpperCase()}
+                                </h3>
+                                <p className="text-orange-700/80 text-sm mb-1">
+                                    You have an unpaid order for <strong className="text-orange-800">₹{(pendingOrder.moneyAmount / 100).toFixed(2)}</strong> with {pendingOrder.totalClothes} item{pendingOrder.totalClothes !== 1 ? 's' : ''}.
+                                </p>
+                                <p className="text-orange-600/60 text-xs">
+                                    Complete the payment to confirm your order, or cancel it to start fresh.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-3 mt-5">
+                            <button
+                                onClick={handleCompletePayment}
+                                disabled={isCompletingPayment}
+                                className="flex-1 flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold text-white bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-lg hover:shadow-orange-300/40 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                                {isCompletingPayment ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Opening Gateway...
+                                    </>
+                                ) : (
+                                    <>
+                                        <HiCreditCard className="w-5 h-5" />
+                                        Complete Payment
+                                    </>
+                                )}
+                            </button>
+                            <button
+                                onClick={handleCancelPending}
+                                disabled={isCancellingOrder}
+                                className="flex-1 flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold text-orange-700 bg-white border-2 border-orange-200 hover:bg-orange-50 hover:border-orange-300 shadow-sm transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                                {isCancellingOrder ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-orange-300 border-t-orange-600 rounded-full animate-spin" />
+                                        Cancelling...
+                                    </>
+                                ) : (
+                                    <>
+                                        <HiXMark className="w-5 h-5" />
+                                        Cancel &amp; Start New
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Quick Place Order Section */}
             <div className="bg-surface rounded-[2.5rem] shadow-xl border border-accent/20 overflow-hidden">
@@ -254,27 +434,35 @@ export default function HomePage() {
                            <p className="text-3xl font-extrabold text-text">₹{totalCartPrice.toFixed(2)}</p>
                         </div>
 
-                        <button
-                            onClick={handlePlaceOrder}
-                            disabled={totalCartItems === 0 || isPlacingOrder}
-                            className={`px-8 py-4 rounded-full font-bold text-lg flex items-center gap-3 transition-all duration-300 shadow-xl w-full sm:w-auto justify-center ${
-                                totalCartItems > 0 && !isPlacingOrder 
-                                ? 'bg-gradient-to-r from-primary to-secondary text-white hover:shadow-primary/30 hover:-translate-y-1' 
-                                : 'bg-surface text-muted cursor-not-allowed border border-accent/20'
-                            }`}
-                        >
-                            {isPlacingOrder ? (
-                                <>
-                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    Processing...
-                                </>
-                            ) : (
-                                <>
-                                    Place Order Securely
-                                    <span className="bg-white/20 px-2.5 py-1 rounded-full text-sm ml-2">{totalCartItems} Items</span>
-                                </>
+                        <div className="relative w-full sm:w-auto">
+                            <button
+                                onClick={handlePlaceOrder}
+                                disabled={totalCartItems === 0 || isPlacingOrder || !!pendingOrder}
+                                className={`px-8 py-4 rounded-full font-bold text-lg flex items-center gap-3 transition-all duration-300 shadow-xl w-full sm:w-auto justify-center ${
+                                    totalCartItems > 0 && !isPlacingOrder && !pendingOrder
+                                    ? 'bg-gradient-to-r from-primary to-secondary text-white hover:shadow-primary/30 hover:-translate-y-1' 
+                                    : 'bg-surface text-muted cursor-not-allowed border border-accent/20'
+                                }`}
+                                title={pendingOrder ? "Complete or cancel your pending payment first" : undefined}
+                            >
+                                {isPlacingOrder ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Creating Order...
+                                    </>
+                                ) : (
+                                    <>
+                                        Place Order Securely
+                                        <span className="bg-white/20 px-2.5 py-1 rounded-full text-sm ml-2">{totalCartItems} Items</span>
+                                    </>
+                                )}
+                            </button>
+                            {pendingOrder && totalCartItems > 0 && (
+                                <p className="text-xs text-orange-500 font-semibold mt-2 text-center">
+                                    ⚠️ Complete or cancel your pending payment first
+                                </p>
                             )}
-                        </button>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -58,6 +58,22 @@ const orderSchema = new Schema({
     razorpayPaymentId : {
         type : String
     },
+    razorpaySignature : {
+        type : String
+    },
+    paymentMethod : {
+        type : String,
+        enum : ['razorpay', 'cash'],
+        default : 'razorpay'
+    },
+    refundId : {
+        type : String
+    },
+    refundStatus : {
+        type : String,
+        enum : ['none', 'initiated', 'processed', 'failed'],
+        default : 'none'
+    },
     receipt : {
         type : String, 
     }

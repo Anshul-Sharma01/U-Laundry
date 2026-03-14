@@ -13,45 +13,24 @@ class RazorpayService {
     }
 
     async createOrder(amount, currency, receipt) {
-        try {
-            // Validate input parameters
-            if (!amount || amount <= 0) {
-                throw new Error("Invalid amount");
-            }
-            if (!currency || !["INR", "USD", "EUR"].includes(currency)) {
-                throw new Error("Invalid currency");
-            }
-            if (!receipt) {
-                throw new Error("Receipt is required");
-            }
-
-            const options = { 
-                amount, 
-                currency, 
-                receipt 
-            };
-            // console.log("it came till here !!!");
-            // console.log("Options being sent to Razorpay:", options);
-            // console.log("Razorpay Key ID:", process.env.RAZORPAY_KEY_ID);
-            // console.log("Razorpay Key Secret:", process.env.RAZORPAY_KEY_SECRET);
-
-
-            const order = await this.instance.orders.create(options);
-
-            // Check if the order was created successfully
-            if (!order || !order.id) {
-                throw new Error("Failed to create order");
-            }
-
-            return order;
-        } catch (err) {
-            console.error("Error from Razorpay API:", err);
-            if (err.response) {
-                console.error("Response Data:", err.response.data);
-            }
-            throw new Error("Failed to create payment order");
+        if (!amount || amount <= 0) {
+            throw new Error("Invalid amount");
         }
-        
+        if (!currency || !["INR", "USD", "EUR"].includes(currency)) {
+            throw new Error("Invalid currency");
+        }
+        if (!receipt) {
+            throw new Error("Receipt is required");
+        }
+
+        const options = { amount, currency, receipt };
+        const order = await this.instance.orders.create(options);
+
+        if (!order || !order.id) {
+            throw new Error("Failed to create order");
+        }
+
+        return order;
     }
 
     verifySignature(body, signature) {
@@ -63,20 +42,46 @@ class RazorpayService {
         return expectedSignature === signature;
     }
 
-    async capturePayment(paymentId, amount) {
-        try {
-            if (!paymentId) {
-                throw new Error("Payment ID is required");
-            }
-            if (!amount || amount <= 0) {
-                throw new Error("Invalid amount");
-            }
-
-            return await this.instance.payments.capture(paymentId, amount);
-        } catch (err) {
-            console.error(`Error capturing payment: ${err}`);
-            throw new Error("Failed to capture payment");
+    verifyWebhookSignature(rawBody, receivedSignature) {
+        const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+        if (!secret) {
+            throw new Error("RAZORPAY_WEBHOOK_SECRET is not configured");
         }
+
+        const expectedSignature = crypto
+            .createHmac("sha256", secret)
+            .update(rawBody)
+            .digest("hex");
+
+        return crypto.timingSafeEqual(
+            Buffer.from(expectedSignature, "hex"),
+            Buffer.from(receivedSignature, "hex")
+        );
+    }
+
+    async createRefund(paymentId, amount) {
+        if (!paymentId) {
+            throw new Error("Payment ID is required");
+        }
+        if (!amount || amount <= 0) {
+            throw new Error("Invalid refund amount");
+        }
+
+        return await this.instance.payments.refund(paymentId, {
+            amount,
+            speed: "normal",
+        });
+    }
+
+    async capturePayment(paymentId, amount) {
+        if (!paymentId) {
+            throw new Error("Payment ID is required");
+        }
+        if (!amount || amount <= 0) {
+            throw new Error("Invalid amount");
+        }
+
+        return await this.instance.payments.capture(paymentId, amount);
     }
 }
 

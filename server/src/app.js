@@ -7,7 +7,10 @@ import { config } from "dotenv";
 config({ path: "./.env" });
 
 import { ApiError } from "./utils/ApiError.js";
-
+import userRouter from "./routes/user.routes.js";
+import orderRouter from "./routes/order.routes.js";
+import laundryItemRouter from "./routes/laundryItem.routes.js";
+import { handleRazorpayWebhook } from "./controllers/razorpayWebhook.controller.js";
 
 const app = express();
 
@@ -17,9 +20,23 @@ app.use(cors({
 }))
 
 app.use(cookieParser());
+app.use(morgan("dev"));
+
+// ─── Razorpay Webhook (Must come BEFORE express.json to get raw body) ──────
+app.post("/api/v1/order/webhook", express.raw({ type: 'application/json' }), (req, res, next) => {
+    if (req.body && Buffer.isBuffer(req.body)) {
+        req.rawBody = req.body.toString('utf8');
+        try {
+            req.body = JSON.parse(req.rawBody);
+        } catch (e) {
+            // Not JSON
+        }
+    }
+    next();
+}, handleRazorpayWebhook);
+
 app.use(express.json({ limit : '16kb' }));
 app.use(express.urlencoded({ extended : true, limit : '16kb' }));
-app.use(morgan("dev"));
 
 
 app.get("/", (req, res) => {
@@ -28,12 +45,15 @@ app.get("/", (req, res) => {
 
 
 // ─── Routes ──────────────────────────────────────────────────────────────
-import userRouter from "./routes/user.routes.js";
-import orderRouter from "./routes/order.routes.js";
-import laundryItemRouter from "./routes/laundryItem.routes.js";
-
 app.use("/api/v1/users", userRouter);
+
+// Primary, canonical mount (used by current frontend)
 app.use("/api/v1/order", orderRouter);
+
+// Backwards-compatible alias: also accept /orders/* to avoid 404s
+// for any older clients or misconfigured base URLs.
+app.use("/api/v1/orders", orderRouter);
+
 app.use("/api/v1/laundry-items", laundryItemRouter);
 
 
