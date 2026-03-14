@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import type { RootState, AppDispatch } from '../../store/store';
 import { HiPlusCircle, HiClipboardDocumentList, HiCurrencyRupee, HiQueueList } from 'react-icons/hi2';
 import { fetchModeratorStats, updateModeratorOrderStatus } from '../../store/slices/moderatorSlice';
 import AddLaundryItemModal from '../../components/moderator/AddLaundryItemModal';
 import ManageLaundryItemsModal from '../../components/moderator/ManageLaundryItemsModal';
+import toast from 'react-hot-toast';
 
 export default function LaundryModeratorPage() {
     const dispatch = useDispatch<AppDispatch>();
+    const navigate = useNavigate();
     const { user } = useSelector((s: RootState) => s.auth);
     const { stats, statsLoading } = useSelector((s: RootState) => s.moderator);
 
@@ -75,7 +78,7 @@ export default function LaundryModeratorPage() {
                     subtitle="Manage & View"
                     bgClass="bg-violet-50"
                     isAction={true}
-                    onClick={() => { /* TODO: Route to Orders */ }}
+                    onClick={() => navigate('/moderator/orders')}
                 />
                 <StatCard
                     icon={<HiCurrencyRupee className="text-emerald-500" />}
@@ -151,9 +154,11 @@ function ActivityRow({ orderId, status, label, time }: { orderId: string, status
         setIsUpdating(true);
         try {
             await dispatch(updateModeratorOrderStatus({ orderId, status: newStatus })).unwrap();
-            // Optional: you might also want to dispatch fetchModeratorStats() to update active orders count
-        } catch (error) {
-            console.error("Failed to update status", error);
+            toast.success(`Order status updated to "${newStatus}"`);
+            // Refresh stats to update active orders count
+            dispatch(fetchModeratorStats());
+        } catch (error: any) {
+            toast.error(error || 'Failed to update order status');
         } finally {
             setIsUpdating(false);
         }
@@ -194,12 +199,11 @@ function ActivityRow({ orderId, status, label, time }: { orderId: string, status
                     disabled={isUpdating}
                     className="text-sm font-semibold bg-bg border border-accent/20 text-text rounded-lg px-2 py-1.5 focus:outline-none focus:border-primary cursor-pointer disabled:opacity-50"
                 >
+                    <option value="Payment left">Payment left</option>
                     <option value="Order Placed">Order Placed</option>
                     <option value="Pending">Pending</option>
-                    <option value="In Progress">In Progress</option>
                     <option value="Prepared">Prepared</option>
                     <option value="Picked Up">Picked Up</option>
-                    <option value="Delivered">Delivered</option>
                     <option value="Cancelled">Cancelled</option>
                 </select>
             </div>

@@ -15,6 +15,7 @@ import PendingVerificationsPage from './pages/admin/PendingVerificationsPage'
 import ManageUsersPage from './pages/admin/ManageUsersPage'
 import OrdersOverviewPage from './pages/admin/OrdersOverviewPage'
 import LaundryModeratorPage from './pages/moderator/LaundryModeratorPage'
+import ModeratorOrdersPage from './pages/moderator/ModeratorOrdersPage'
 import ProfilePage from './pages/ProfilePage'
 import "./index.css"
 
@@ -56,6 +57,7 @@ function App() {
               {/* Moderator-only Routes */}
               <Route element={<ModeratorRoute />}>
                 <Route path="/laundry-moderator" element={<LaundryModeratorPage />} />
+                <Route path="/moderator/orders" element={<ModeratorOrdersPage />} />
               </Route>
             </Route>
           </Route>

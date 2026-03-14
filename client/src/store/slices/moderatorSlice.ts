@@ -124,7 +124,7 @@ export const updateModeratorOrderStatus = createAsyncThunk(
     'moderator/updateOrderStatus',
     async ({ orderId, status }: { orderId: string; status: string }, { rejectWithValue }) => {
         try {
-            const { data } = await axiosInstance.patch(`orders/update/${orderId}/${encodeURIComponent(status)}`);
+            const { data } = await axiosInstance.patch(`order/update/${orderId}/${encodeURIComponent(status)}`);
             return data.data; // Server usually sends the updated order back inside data.data or just data
         } catch (err: any) {
             return rejectWithValue(err.response?.data?.message || 'Failed to update order status');
