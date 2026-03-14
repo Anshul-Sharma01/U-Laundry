@@ -41,7 +41,7 @@ export default function HomePage() {
     const fetchLaundryItems = async () => {
         try {
             setLoadingItems(true);
-            const { data } = await axiosInstance.get('/laundryItems');
+            const { data } = await axiosInstance.get('/laundry-items');
             if (data?.data) {
                 // Filter active items (fallback, though endpoints should return active only)
                 setLaundryItems(data.data.filter((item: LaundryItem) => item.isActive));
@@ -57,7 +57,7 @@ export default function HomePage() {
         if (!user?._id) return;
         try {
             setLoadingOrders(true);
-            const { data } = await axiosInstance.get(`/orders/user/${user._id}`);
+            const { data } = await axiosInstance.get(`/order/user/${user._id}`);
             if (data?.data?.userOrders) {
                 setOrders(data.data.userOrders);
             }

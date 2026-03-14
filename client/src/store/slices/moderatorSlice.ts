@@ -86,7 +86,7 @@ export const createLaundryItem = createAsyncThunk(
     'moderator/createLaundryItem',
     async (formData: FormData, { rejectWithValue }) => {
         try {
-            const { data } = await axiosInstance.post('laundryItems', formData, {
+            const { data } = await axiosInstance.post('laundry-items', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             return data;
@@ -100,7 +100,7 @@ export const deleteLaundryItem = createAsyncThunk(
     'moderator/deleteLaundryItem',
     async (itemId: string, { rejectWithValue }) => {
         try {
-            const { data } = await axiosInstance.delete(`laundryItems/${itemId}`);
+            const { data } = await axiosInstance.delete(`laundry-items/${itemId}`);
             return { ...data, itemId };
         } catch (err: any) {
             return rejectWithValue(err.response?.data?.message || 'Failed to delete laundry item');
@@ -112,7 +112,7 @@ export const fetchAllLaundryItems = createAsyncThunk(
     'moderator/fetchAllLaundryItems',
     async (_, { rejectWithValue }) => {
         try {
-            const { data } = await axiosInstance.get('laundryItems');
+            const { data } = await axiosInstance.get('laundry-items');
             return data.data; // Since ApiResponse wraps it in data
         } catch (err: any) {
             return rejectWithValue(err.response?.data?.message || 'Failed to fetch laundry items');
