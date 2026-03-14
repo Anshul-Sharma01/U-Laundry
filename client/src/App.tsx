@@ -10,6 +10,7 @@ import AdminRoute from './components/AdminRoute'
 import ModeratorRoute from './components/ModeratorRoute'
 import NavigationLayout from './layouts/NavigationLayout'
 import HomePage from './pages/HomePage'
+import ContactPage from './pages/ContactPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import PendingVerificationsPage from './pages/admin/PendingVerificationsPage'
 import ManageUsersPage from './pages/admin/ManageUsersPage'
@@ -43,6 +44,7 @@ function App() {
             <Route element={<NavigationLayout />}>
               {/* Student / General Routes */}
               <Route path="/" element={<HomePage />} />
+              <Route path="/contact" element={<ContactPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               {/* Future dashboard routes like /orders would go here */}
 
