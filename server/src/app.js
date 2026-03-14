@@ -10,6 +10,7 @@ import { ApiError } from "./utils/ApiError.js";
 import userRouter from "./routes/user.routes.js";
 import orderRouter from "./routes/order.routes.js";
 import laundryItemRouter from "./routes/laundryItem.routes.js";
+import chatbotRouter from "./routes/chatbot.routes.js";
 import { handleRazorpayWebhook } from "./controllers/razorpayWebhook.controller.js";
 
 const app = express();
@@ -55,6 +56,8 @@ app.use("/api/v1/order", orderRouter);
 app.use("/api/v1/orders", orderRouter);
 
 app.use("/api/v1/laundry-items", laundryItemRouter);
+
+app.use("/api/v1/chatbot", chatbotRouter);
 
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────
