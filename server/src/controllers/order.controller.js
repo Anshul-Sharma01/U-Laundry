@@ -8,6 +8,7 @@ import { User } from "../models/user.model.js";
 import sendEmail from "../utils/sendEmail.js";
 import razorpayService from "../utils/razorpayService.js";
 import crypto from "crypto";
+import { getIO } from "../utils/socketManager.js";
 
 const VALID_STATUSES = ['Order Placed', 'Pending', 'Prepared', 'Picked Up', 'Cancelled', 'Payment left'];
 
@@ -111,6 +112,21 @@ const addNewOrder = asyncHandler(async(req, res) => {
         { new: true }
     );
 
+    // ── Notify moderators of the new order in real-time ──────────────────
+    try {
+        getIO().to("moderators").emit("order:new", {
+            orderId: order._id,
+            userId: userId.toString(),
+            totalClothes: order.totalClothes,
+            moneyAmount: order.moneyAmount,
+            status: order.status,
+            createdAt: order.createdAt,
+        });
+    } catch (socketErr) {
+        // Non-fatal: log but don't fail the request
+        console.error("[Socket.IO] Failed to emit order:new:", socketErr.message);
+    }
+
     // Send confirmation email (non-blocking)
     const user = await User.findById(userId);
     if (user?.email) {
@@ -162,6 +178,16 @@ const updateOrderStatus = asyncHandler(async(req, res) => {
 
     if(!updatedOrder){
         throw new ApiError(404, "Order not found or could not be updated");
+    }
+
+    // ── Notify the student whose order was updated ────────────────────────
+    try {
+        getIO().to(`user:${updatedOrder.user.toString()}`).emit("order:statusUpdated", {
+            orderId: updatedOrder._id,
+            status: updatedOrder.status,
+        });
+    } catch (socketErr) {
+        console.error("[Socket.IO] Failed to emit order:statusUpdated:", socketErr.message);
     }
 
     // Send status update email (non-blocking)
@@ -409,6 +435,25 @@ const verifyRazorpaySignature = asyncHandler(async (req, res) => {
     order.razorpaySignature = razorpay_signature;
     order.status = "Order Placed";
     await order.save();
+
+    // ── Notify the student that payment is confirmed ──────────────────────
+    try {
+        getIO().to(`user:${order.user.toString()}`).emit("order:statusUpdated", {
+            orderId: order._id,
+            status: order.status,
+        });
+        // Also notify moderators so their list refreshes
+        getIO().to("moderators").emit("order:new", {
+            orderId: order._id,
+            userId: order.user.toString(),
+            totalClothes: order.totalClothes,
+            moneyAmount: order.moneyAmount,
+            status: order.status,
+            createdAt: order.createdAt,
+        });
+    } catch (socketErr) {
+        console.error("[Socket.IO] Failed to emit payment confirmed events:", socketErr.message);
+    }
 
     // Send confirmation email (non-blocking)
     const user = await User.findById(order.user);

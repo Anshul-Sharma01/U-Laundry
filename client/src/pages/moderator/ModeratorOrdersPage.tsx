@@ -9,6 +9,7 @@ import {
 import { updateModeratorOrderStatus } from '../../store/slices/moderatorSlice';
 import axiosInstance from '../../helpers/axiosInstance';
 import toast from 'react-hot-toast';
+import socketService from '../../helpers/socketService';
 
 interface OrderItem {
     laundryItem: {
@@ -55,6 +56,41 @@ export default function ModeratorOrdersPage() {
 
     useEffect(() => {
         fetchOrders();
+    }, [selectedStatus]);
+
+    // ── Real-time: listen for new orders and status changes ───────────────
+    useEffect(() => {
+        const socket = socketService.getSocket();
+        if (!socket) return;
+
+        // A new confirmed order arrived — refresh the list
+        const handleNewOrder = (payload: { orderId: string; status: string }) => {
+            toast(`New order received! #${payload.orderId.slice(-6).toUpperCase()}`, {
+                icon: '🧺',
+                duration: 4000,
+            });
+            fetchOrders();
+        };
+
+        // A status was updated (e.g. by another moderator tab) — patch in place
+        const handleStatusUpdated = (payload: { orderId: string; status: string }) => {
+            setOrders(prev =>
+                prev.map(order =>
+                    order._id === payload.orderId
+                        ? { ...order, status: payload.status }
+                        : order
+                )
+            );
+        };
+
+        socket.on("order:new", handleNewOrder);
+        socket.on("order:statusUpdated", handleStatusUpdated);
+
+        return () => {
+            socket.off("order:new", handleNewOrder);
+            socket.off("order:statusUpdated", handleStatusUpdated);
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedStatus]);
 
     const fetchOrders = async () => {

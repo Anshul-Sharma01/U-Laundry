@@ -7,6 +7,7 @@ import { fetchModeratorStats, updateModeratorOrderStatus } from '../../store/sli
 import AddLaundryItemModal from '../../components/moderator/AddLaundryItemModal';
 import ManageLaundryItemsModal from '../../components/moderator/ManageLaundryItemsModal';
 import toast from 'react-hot-toast';
+import socketService from '../../helpers/socketService';
 
 export default function LaundryModeratorPage() {
     const dispatch = useDispatch<AppDispatch>();
@@ -19,6 +20,22 @@ export default function LaundryModeratorPage() {
 
     useEffect(() => {
         dispatch(fetchModeratorStats());
+    }, [dispatch]);
+
+    // ── Real-time: refresh stats when a new order arrives ─────────────────
+    useEffect(() => {
+        const socket = socketService.getSocket();
+        if (!socket) return;
+
+        const handleNewOrder = () => {
+            dispatch(fetchModeratorStats());
+        };
+
+        socket.on("order:new", handleNewOrder);
+
+        return () => {
+            socket.off("order:new", handleNewOrder);
+        };
     }, [dispatch]);
 
     const formatCurrencyLocal = (amount: number) => {

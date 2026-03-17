@@ -67,7 +67,7 @@ export default function Navbar() {
                                 </>
                             ) : (
                                 <>
-                                    <NavLink to="/" icon={<HiHome size={18} />} label="Dashboard" />
+                                    <NavLink to="/" icon={<HiHome size={18} />} label="Home" />
                                     <NavLink to="/orders" icon={<HiBell size={18} />} label="Orders" />
                                 </>
                             )}

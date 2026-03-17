@@ -8,6 +8,7 @@ import {
 } from 'react-icons/hi2';
 import axiosInstance from '../helpers/axiosInstance';
 import toast from 'react-hot-toast';
+import socketService from '../helpers/socketService';
 
 interface LaundryItem {
     _id: string;
@@ -81,6 +82,33 @@ export default function HomePage() {
             fetchOrders();
         }
     }, [user?._id, fetchLaundryItems, fetchOrders]);
+
+    // ── Real-time: listen for order status updates from the server ────────
+    useEffect(() => {
+        const socket = socketService.getSocket();
+        if (!socket) return;
+
+        const handleStatusUpdate = (payload: { orderId: string; status: string }) => {
+            setOrders(prev =>
+                prev.map(order =>
+                    order._id === payload.orderId
+                        ? { ...order, status: payload.status }
+                        : order
+                )
+            );
+            toast.success(`Order #${payload.orderId.slice(-6).toUpperCase()} is now: ${payload.status}`, {
+                icon: '🔄',
+                duration: 4000,
+            });
+        };
+
+        socket.on("order:statusUpdated", handleStatusUpdate);
+
+        // Cleanup: remove listener when component unmounts or socket changes
+        return () => {
+            socket.off("order:statusUpdated", handleStatusUpdate);
+        };
+    }, [user?._id]);
 
     const handleQuantityChange = (itemId: string, delta: number, maxQty: number) => {
         setCart(prev => {
