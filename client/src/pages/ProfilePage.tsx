@@ -1,13 +1,23 @@
-
-import { useSelector } from 'react-redux';
-import type { RootState } from '../store/store';
+import { useState, type FormEvent } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import type { AppDispatch, RootState } from '../store/store';
+import { changePassword, clearAuthMessages } from '../store/slices/authSlice';
+import toast from 'react-hot-toast';
 import { 
     HiUser, HiOutlineEnvelope, HiOutlineIdentification, HiOutlineHome, 
-    HiOutlineBriefcase, HiOutlineAcademicCap, HiOutlineShieldCheck
+    HiOutlineBriefcase, HiOutlineAcademicCap, HiOutlineShieldCheck,
+    HiLockClosed, HiCheckCircle, HiEye, HiEyeSlash
 } from 'react-icons/hi2';
 
 export default function ProfilePage() {
-    const { user } = useSelector((s: RootState) => s.auth);
+    const dispatch = useDispatch<AppDispatch>();
+    const { user, isLoading } = useSelector((s: RootState) => s.auth);
+
+    const [oldPassword, setOldPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [showOldPassword, setShowOldPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
 
     if (!user) {
         return (
@@ -20,6 +30,35 @@ export default function ProfilePage() {
     const isStudent = user.role === 'student';
     const isAdmin = user.role === 'admin';
     const isModerator = user.role === 'laundry-moderator';
+
+    // Password rules
+    const rules = [
+        { id: 'length', text: 'At least 8 characters', regex: /.{8,}/ },
+        { id: 'letter', text: 'At least 1 letter', regex: /[A-Za-z]/ },
+        { id: 'number', text: 'At least 1 number', regex: /\d/ },
+        { id: 'special', text: 'At least 1 special character (@$!%*?&)', regex: /[@$!%*?&]/ },
+    ];
+    const isRuleValid = (regex: RegExp) => regex.test(newPassword);
+    const allRulesValid = rules.every(rule => isRuleValid(rule.regex));
+    const passwordsMatch = newPassword && confirmNewPassword && newPassword === confirmNewPassword;
+
+    const handlePasswordChange = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!oldPassword) return toast.error('Old password is required');
+        if (!allRulesValid) return toast.error('Please fulfill all new password rules');
+        if (!passwordsMatch) return toast.error('New passwords do not match');
+
+        dispatch(clearAuthMessages());
+        const result = await dispatch(changePassword({ oldPassword, newPassword }));
+        if (changePassword.fulfilled.match(result)) {
+            toast.success('Password updated successfully');
+            setOldPassword('');
+            setNewPassword('');
+            setConfirmNewPassword('');
+        } else {
+            toast.error((result.payload as string) || 'Failed to change password');
+        }
+    };
 
     return (
         <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 animate-fade-in space-y-8">
@@ -175,6 +214,81 @@ export default function ProfilePage() {
                     </div>
                 </div>
 
+            </div>
+
+            {/* Change Password Section */}
+            <div className="bg-surface rounded-3xl p-6 sm:p-8 shadow-xl border border-accent/20 hover:shadow-2xl transition-shadow duration-300">
+                <h2 className="text-xl font-bold text-text mb-6 flex items-center gap-2">
+                    <div className="w-2 h-6 rounded-full bg-red-500/80" />
+                    Security & Password
+                </h2>
+                <form onSubmit={handlePasswordChange} className="max-w-xl">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-text mb-1.5">Current Password</label>
+                            <div className="relative">
+                                <input 
+                                    type={showOldPassword ? "text" : "password"}
+                                    value={oldPassword}
+                                    onChange={(e) => setOldPassword(e.target.value)}
+                                    placeholder="Enter current password"
+                                    className="w-full px-4 py-3 pr-10 bg-bg border-[1.5px] border-gray-200 rounded-xl text-base outline-none focus:border-primary focus:ring-2 focus:ring-accent/40 transition-colors"
+                                />
+                                <button type="button" onClick={() => setShowOldPassword(!showOldPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text p-1 transition-colors">
+                                    {showOldPassword ? <HiEyeSlash size={20}/> : <HiEye size={20}/>}
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-text mb-1.5">New Password</label>
+                            <div className="relative">
+                                <input 
+                                    type={showNewPassword ? "text" : "password"}
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    placeholder="Enter new password"
+                                    className={`w-full px-4 py-3 pr-10 bg-bg border-[1.5px] rounded-xl text-base outline-none focus:border-primary focus:ring-2 focus:ring-accent/40 transition-colors ${newPassword && allRulesValid ? 'border-green-500' : 'border-gray-200'}`}
+                                />
+                                <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text p-1 transition-colors">
+                                    {showNewPassword ? <HiEyeSlash size={20}/> : <HiEye size={20}/>}
+                                </button>
+                            </div>
+                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-medium">
+                                {rules.map((rule) => {
+                                    const isValid = isRuleValid(rule.regex);
+                                    return (
+                                        <div key={rule.id} className={`flex items-center gap-1.5 ${isValid ? 'text-green-600' : 'text-muted'}`}>
+                                            <HiCheckCircle className={`w-4 h-4 ${isValid ? 'text-green-500' : 'text-gray-300'}`} />
+                                            <span>{rule.text}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-text mb-1.5">Confirm New Password</label>
+                            <input 
+                                type="password"
+                                value={confirmNewPassword}
+                                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                                placeholder="Re-enter new password"
+                                className={`w-full px-4 py-3 bg-bg border-[1.5px] rounded-xl text-base outline-none focus:border-primary focus:ring-2 focus:ring-accent/40 transition-colors ${confirmNewPassword && !passwordsMatch ? 'border-red-500' : confirmNewPassword && passwordsMatch ? 'border-green-500' : 'border-gray-200'}`}
+                            />
+                            {confirmNewPassword && !passwordsMatch && (
+                                <p className="text-red-500 text-xs mt-1.5 font-medium">Passwords do not match</p>
+                            )}
+                        </div>
+                    </div>
+                    <div className="mt-6">
+                        <button
+                            type="submit"
+                            disabled={isLoading || !oldPassword || !allRulesValid || !passwordsMatch}
+                            className="px-8 py-3.5 bg-primary text-white border-none rounded-xl text-base font-bold cursor-pointer transition-all hover:bg-secondary hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none shadow-[0_4px_18px_rgba(224,0,0,0.35)]"
+                        >
+                            {isLoading ? 'Updating...' : 'Change Password'}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     );

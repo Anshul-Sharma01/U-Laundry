@@ -336,28 +336,21 @@ const forgotPassword = asyncHandler(async (req, res) => {
 
     const resetPasswordURL = `${process.env.FRONTEND_URL}/auth/reset-password/${resetToken}`;
 
-    const subject = "Reset Password Token";
-    const message = `<p style="font-family: Arial, sans-serif; color: #333; font-size: 16px;">
-        Hello,
-    </p>
-    <p style="font-family: Arial, sans-serif; color: #333; font-size: 16px;">
-        We received a request to reset your password. You can easily reset it by clicking the button below:
-    </p>
-    <p style="text-align: center;">
-        <a href="${resetPasswordURL}" target="_blank" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-family: Arial, sans-serif; font-size: 16px;">Reset Your Password</a>
-    </p>
-    <p style="font-family: Arial, sans-serif; color: #333; font-size: 16px;">
-        If the above button doesn't work, copy and paste the following link into your browser:
-    </p>
-    <p style="font-family: Arial, sans-serif; color: #007BFF; word-wrap: break-word; font-size: 16px;">
-        <a href="${resetPasswordURL}" target="_blank" style="color: #007BFF; text-decoration: underline;">${resetPasswordURL}</a>
-    </p>
-    <p style="font-family: Arial, sans-serif; color: #333; font-size: 16px;">
-        If you did not request a password reset, please ignore this message. The link is valid for 15 minutes only.
-    </p>
-    <p style="font-family: Arial, sans-serif; color: #333; font-size: 16px;">
-        Thank you,<br>U-Laundry 
-    </p>`;
+    const subject = "U-Laundry — Password Reset Request";
+    const message = `<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #C41E3A;">Reset Your Password</h2>
+        <p style="color: #555; font-size: 16px;">Hello,</p>
+        <p style="color: #555; font-size: 16px;">We received a request to reset the password for your U-Laundry account. Click the button below to set a new password:</p>
+        <p style="text-align: center; margin: 30px 0;">
+            <a href="${resetPasswordURL}" target="_blank" style="background-color: #C41E3A; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">Reset Password</a>
+        </p>
+        <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #eee;">
+            <p style="color: #777; font-size: 13px; margin: 0; line-height: 1.5;">If the button doesn't work, copy and paste this link into your browser:<br>
+            <a href="${resetPasswordURL}" target="_blank" style="color: #007BFF; word-break: break-all;">${resetPasswordURL}</a></p>
+        </div>
+        <p style="color: #999; font-size: 14px;">If you did not request this, please ignore this email. This link will expire in 15 minutes.</p>
+        <p style="color: #555; font-size: 16px;">Thank you,<br><strong>U-Laundry Support</strong></p>
+    </div>`;
 
     try{
         await sendEmail(email, subject, message);

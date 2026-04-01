@@ -4,6 +4,8 @@ import SignupPage from './pages/auth/SignupPage'
 import AdminRegisterPage from './pages/auth/AdminRegisterPage'
 import LoginPage from './pages/auth/LoginPage'
 import VerificationPendingPage from './pages/auth/VerificationPendingPage'
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
+import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 import AuthHydrator from './components/AuthHydrator'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
@@ -37,6 +39,8 @@ function App() {
           <Route path="/auth/sign-up" element={<SignupPage />} />
           <Route path="/auth/admin-register" element={<AdminRegisterPage />} />
           <Route path="/auth/sign-in" element={<LoginPage />} />
+          <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/auth/reset-password/:resetToken" element={<ResetPasswordPage />} />
           <Route path="/auth/verification-pending" element={<VerificationPendingPage />} />
 
           {/* Protected Routes (Require Login) */}

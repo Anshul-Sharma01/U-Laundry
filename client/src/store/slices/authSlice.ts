@@ -97,6 +97,42 @@ export const resendOtp = createAsyncThunk(
     }
 );
 
+export const forgotPassword = createAsyncThunk(
+    'auth/forgotPassword',
+    async (email: string, { rejectWithValue }) => {
+        try {
+            const { data } = await axiosInstance.patch('users/reset', { email });
+            return data;
+        } catch (err: any) {
+            return rejectWithValue(err.response?.data?.message || 'Failed to send reset link');
+        }
+    }
+);
+
+export const resetPassword = createAsyncThunk(
+    'auth/resetPassword',
+    async ({ token, password }: { token: string; password: string }, { rejectWithValue }) => {
+        try {
+            const { data } = await axiosInstance.patch(`users/reset/${token}`, { password });
+            return data;
+        } catch (err: any) {
+            return rejectWithValue(err.response?.data?.message || 'Failed to reset password');
+        }
+    }
+);
+
+export const changePassword = createAsyncThunk(
+    'auth/changePassword',
+    async (payload: { oldPassword: string; newPassword: string }, { rejectWithValue }) => {
+        try {
+            const { data } = await axiosInstance.patch('users/change-password', payload);
+            return data;
+        } catch (err: any) {
+            return rejectWithValue(err.response?.data?.message || 'Failed to change password');
+        }
+    }
+);
+
 /**
  * getProfile — used by AuthHydrator on every app load.
  * Calls GET /users/me → verifyJWT → hydrateAuth → returns the full user object.
@@ -241,6 +277,48 @@ const authSlice = createSlice({
                 state.isLoggedIn = false;
                 state.otpSent = false;
                 state.otpEmail = '';
+            })
+
+            // ── Forgot Password ──
+            .addCase(forgotPassword.pending, (state) => {
+                state.isLoading = true;
+                state.error = '';
+            })
+            .addCase(forgotPassword.fulfilled, (state, action) => {
+                state.isLoading = false;
+                state.successMessage = action.payload.message;
+            })
+            .addCase(forgotPassword.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.payload as string;
+            })
+
+            // ── Reset Password ──
+            .addCase(resetPassword.pending, (state) => {
+                state.isLoading = true;
+                state.error = '';
+            })
+            .addCase(resetPassword.fulfilled, (state, action) => {
+                state.isLoading = false;
+                state.successMessage = action.payload.message;
+            })
+            .addCase(resetPassword.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.payload as string;
+            })
+
+            // ── Change Password ──
+            .addCase(changePassword.pending, (state) => {
+                state.isLoading = true;
+                state.error = '';
+            })
+            .addCase(changePassword.fulfilled, (state, action) => {
+                state.isLoading = false;
+                state.successMessage = action.payload.message;
+            })
+            .addCase(changePassword.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.payload as string;
             });
     },
 });
