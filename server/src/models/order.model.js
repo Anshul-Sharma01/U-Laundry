@@ -76,6 +76,17 @@ const orderSchema = new Schema({
     },
     receipt : {
         type : String, 
+    },
+    pickupSlot: {
+        slotDate: {
+            type: String, // YYYY-MM-DD
+        },
+        slotLabel: {
+            type: String,
+        },
+        selectedAt: {
+            type: Date,
+        }
     }
 }, {
     timestamps : true

@@ -36,6 +36,11 @@ interface ModeratorOrder {
     moneyPaid: boolean;
     createdAt: string;
     updatedAt: string;
+    pickupSlot?: {
+        slotDate: string;
+        slotLabel: string;
+        selectedAt?: string;
+    };
 }
 
 interface TrendDay {

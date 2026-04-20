@@ -9,8 +9,92 @@ import sendEmail from "../utils/sendEmail.js";
 import razorpayService from "../utils/razorpayService.js";
 import crypto from "crypto";
 import { getIO } from "../utils/socketManager.js";
+import { PickupSlotInventory } from "../models/pickupSlotInventory.model.js";
 
 const VALID_STATUSES = ['Order Placed', 'Pending', 'Prepared', 'Picked Up', 'Cancelled', 'Payment left'];
+const PICKUP_SLOT_LABELS = [
+    "09:00 AM - 11:00 AM",
+    "11:00 AM - 01:00 PM",
+    "02:00 PM - 04:00 PM",
+    "04:00 PM - 06:00 PM",
+];
+const MIN_DAYS_AHEAD_FOR_SLOT = 2;
+const SLOT_WINDOW_DAYS = 7;
+const DEFAULT_SLOT_CAPACITY = Math.max(1, Number(process.env.PICKUP_SLOT_CAPACITY || 5));
+
+const toYyyyMmDd = (dateObj) => {
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const day = String(dateObj.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+};
+
+const normalizeToDayStart = (dateObj) => {
+    const d = new Date(dateObj);
+    d.setHours(0, 0, 0, 0);
+    return d;
+};
+
+const isSlotDateAllowed = (slotDate) => {
+    const parsed = new Date(`${slotDate}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return false;
+    const today = normalizeToDayStart(new Date());
+    const minAllowed = new Date(today);
+    minAllowed.setDate(minAllowed.getDate() + MIN_DAYS_AHEAD_FOR_SLOT);
+    return normalizeToDayStart(parsed).getTime() >= minAllowed.getTime();
+};
+
+const buildAvailablePickupSlots = async () => {
+    const today = normalizeToDayStart(new Date());
+    const slots = [];
+
+    for (let dayOffset = MIN_DAYS_AHEAD_FOR_SLOT; dayOffset < MIN_DAYS_AHEAD_FOR_SLOT + SLOT_WINDOW_DAYS; dayOffset += 1) {
+        const targetDate = new Date(today);
+        targetDate.setDate(today.getDate() + dayOffset);
+        const slotDate = toYyyyMmDd(targetDate);
+
+        for (const slotLabel of PICKUP_SLOT_LABELS) {
+            const inventory = await PickupSlotInventory.findOneAndUpdate(
+                { slotDate, slotLabel },
+                {
+                    $setOnInsert: {
+                        slotDate,
+                        slotLabel,
+                        capacity: DEFAULT_SLOT_CAPACITY,
+                        bookedCount: 0,
+                    }
+                },
+                { upsert: true, new: true }
+            ).lean();
+
+            const remaining = Math.max(0, inventory.capacity - inventory.bookedCount);
+            slots.push({
+                slotDate,
+                slotLabel,
+                capacity: inventory.capacity,
+                bookedCount: inventory.bookedCount,
+                remaining,
+                isAvailable: remaining > 0,
+            });
+        }
+    }
+
+    return slots;
+};
+
+const releasePickupSlotForOrder = async (orderDoc) => {
+    if (!orderDoc?.pickupSlot?.slotDate || !orderDoc?.pickupSlot?.slotLabel) return;
+
+    await PickupSlotInventory.findOneAndUpdate(
+        {
+            slotDate: orderDoc.pickupSlot.slotDate,
+            slotLabel: orderDoc.pickupSlot.slotLabel,
+            bookedCount: { $gt: 0 }
+        },
+        { $inc: { bookedCount: -1 } },
+        { new: true }
+    );
+};
 
 const addNewOrder = asyncHandler(async(req, res) => {
     const { items, currency = "INR" } = req.body;
@@ -180,6 +264,12 @@ const updateOrderStatus = asyncHandler(async(req, res) => {
         throw new ApiError(404, "Order not found or could not be updated");
     }
 
+    if (status === "Cancelled") {
+        await releasePickupSlotForOrder(updatedOrder);
+        updatedOrder.pickupSlot = undefined;
+        await updatedOrder.save();
+    }
+
     // ── Notify the student whose order was updated ────────────────────────
     try {
         getIO().to(`user:${updatedOrder.user.toString()}`).emit("order:statusUpdated", {
@@ -231,6 +321,125 @@ const getOrderById = asyncHandler(async (req, res) => {
         new ApiResponse(200, order, "Order details fetched successfully")
     );
 })
+
+const getPickupSlotsForOrder = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+
+    if (!isValidObjectId(orderId)) {
+        throw new ApiError(400, "Invalid Order Id");
+    }
+
+    const order = await Order.findById(orderId).select("user status pickupSlot");
+    if (!order) {
+        throw new ApiError(404, "Order not found");
+    }
+
+    if (order.user.toString() !== req.user._id.toString()) {
+        throw new ApiError(403, "You are not allowed to view pickup slots for this order");
+    }
+
+    if (!["Order Placed", "Pending", "Prepared"].includes(order.status)) {
+        throw new ApiError(400, "Pickup slot can only be selected for active orders");
+    }
+
+    const slots = await buildAvailablePickupSlots();
+
+    return res.status(200).json(
+        new ApiResponse(200, {
+            orderId: order._id,
+            selectedSlot: order.pickupSlot?.slotDate ? order.pickupSlot : null,
+            minDaysAhead: MIN_DAYS_AHEAD_FOR_SLOT,
+            slots,
+        }, "Pickup slots fetched successfully")
+    );
+});
+
+const selectPickupSlotForOrder = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+    const { slotDate, slotLabel } = req.body;
+
+    if (!isValidObjectId(orderId)) {
+        throw new ApiError(400, "Invalid Order Id");
+    }
+
+    if (!slotDate || !slotLabel) {
+        throw new ApiError(400, "slotDate and slotLabel are required");
+    }
+
+    if (!PICKUP_SLOT_LABELS.includes(slotLabel)) {
+        throw new ApiError(400, "Invalid slot label");
+    }
+
+    if (!isSlotDateAllowed(slotDate)) {
+        throw new ApiError(400, `Pickup slot must be at least ${MIN_DAYS_AHEAD_FOR_SLOT} days ahead`);
+    }
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+        throw new ApiError(404, "Order not found");
+    }
+
+    if (order.user.toString() !== req.user._id.toString()) {
+        throw new ApiError(403, "You are not allowed to update this order pickup slot");
+    }
+
+    if (!["Order Placed", "Pending", "Prepared"].includes(order.status)) {
+        throw new ApiError(400, "Pickup slot can only be selected for active orders");
+    }
+
+    const previouslySelectedSlot = order.pickupSlot?.slotDate && order.pickupSlot?.slotLabel
+        ? { slotDate: order.pickupSlot.slotDate, slotLabel: order.pickupSlot.slotLabel }
+        : null;
+
+    if (
+        previouslySelectedSlot &&
+        previouslySelectedSlot.slotDate === slotDate &&
+        previouslySelectedSlot.slotLabel === slotLabel
+    ) {
+        return res.status(200).json(
+            new ApiResponse(200, order, "Pickup slot already selected")
+        );
+    }
+
+    if (previouslySelectedSlot) {
+        await releasePickupSlotForOrder(order);
+    }
+
+    const inventory = await PickupSlotInventory.findOneAndUpdate(
+        {
+            slotDate,
+            slotLabel,
+            $expr: { $lt: ["$bookedCount", "$capacity"] }
+        },
+        { $inc: { bookedCount: 1 } },
+        { new: true }
+    );
+
+    if (!inventory) {
+        if (previouslySelectedSlot) {
+            await PickupSlotInventory.findOneAndUpdate(
+                { slotDate: previouslySelectedSlot.slotDate, slotLabel: previouslySelectedSlot.slotLabel },
+                { $inc: { bookedCount: 1 } },
+                { new: true }
+            );
+        }
+        throw new ApiError(409, "Selected slot is full. Please choose another slot");
+    }
+
+    order.pickupSlot = {
+        slotDate,
+        slotLabel,
+        selectedAt: new Date(),
+    };
+    await order.save();
+
+    return res.status(200).json(
+        new ApiResponse(200, {
+            order,
+            remaining: Math.max(0, inventory.capacity - inventory.bookedCount),
+        }, "Pickup slot selected successfully")
+    );
+});
 
 
 const getOrdersByUser = asyncHandler(async (req, res) => {
@@ -323,6 +532,8 @@ const cancelOrder = asyncHandler(async( req, res) => {
     }
 
     order.status = 'Cancelled';
+    await releasePickupSlotForOrder(order);
+    order.pickupSlot = undefined;
     await order.save();
 
     return res.status(200).json(
@@ -485,6 +696,8 @@ export {
     addNewOrder,
     updateOrderStatus,
     getOrderById,
+    getPickupSlotsForOrder,
+    selectPickupSlotForOrder,
     getOrdersByUser,
     cancelOrder,
     getAllOrders,

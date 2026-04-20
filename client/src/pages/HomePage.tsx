@@ -4,7 +4,7 @@ import type { RootState } from '../store/store';
 import { 
     HiClock, HiOutlinePlus, 
     HiOutlineMinus, HiOutlineShoppingCart, HiOutlineReceiptRefund,
-    HiExclamationTriangle, HiXMark, HiCreditCard
+    HiExclamationTriangle, HiXMark, HiCreditCard, HiCalendarDays
 } from 'react-icons/hi2';
 import axiosInstance from '../helpers/axiosInstance';
 import toast from 'react-hot-toast';
@@ -29,6 +29,20 @@ interface Order {
     createdAt: string;
     razorpayOrderId?: string;
     moneyPaid?: boolean;
+    pickupSlot?: {
+        slotDate: string;
+        slotLabel: string;
+        selectedAt?: string;
+    };
+}
+
+interface PickupSlot {
+    slotDate: string;
+    slotLabel: string;
+    capacity: number;
+    bookedCount: number;
+    remaining: number;
+    isAvailable: boolean;
 }
 
 export default function HomePage() {
@@ -43,6 +57,11 @@ export default function HomePage() {
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
     const [isCompletingPayment, setIsCompletingPayment] = useState(false);
     const [isCancellingOrder, setIsCancellingOrder] = useState(false);
+    const [pickupSlots, setPickupSlots] = useState<PickupSlot[]>([]);
+    const [slotOrderId, setSlotOrderId] = useState<string | null>(null);
+    const [isLoadingPickupSlots, setIsLoadingPickupSlots] = useState(false);
+    const [isSelectingPickupSlot, setIsSelectingPickupSlot] = useState(false);
+    const [minPickupDaysAhead, setMinPickupDaysAhead] = useState(2);
 
     // ── Pending payment order (status === 'Payment left') ────────────────
     const pendingOrder = orders.find(o => o.status === 'Payment left');
@@ -82,6 +101,22 @@ export default function HomePage() {
             fetchOrders();
         }
     }, [user?._id, fetchLaundryItems, fetchOrders]);
+
+    const fetchPickupSlots = useCallback(async (orderId: string) => {
+        try {
+            setIsLoadingPickupSlots(true);
+            const { data } = await axiosInstance.get(`/order/pickup-slots/${orderId}`);
+            setPickupSlots(data?.data?.slots || []);
+            setSlotOrderId(orderId);
+            setMinPickupDaysAhead(data?.data?.minDaysAhead || 2);
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to fetch pickup slots');
+            setPickupSlots([]);
+            setSlotOrderId(null);
+        } finally {
+            setIsLoadingPickupSlots(false);
+        }
+    }, []);
 
     // ── Real-time: listen for order status updates from the server ────────
     useEffect(() => {
@@ -163,6 +198,7 @@ export default function HomePage() {
                     toast.success("Payment verified! Order placed successfully 🎉");
                     setCart({});
                     fetchOrders();
+                    fetchPickupSlots(orderId);
                 } catch (err: any) {
                     toast.error(err.response?.data?.message || "Payment verification failed. Contact support.");
                     fetchOrders(); // Refresh to show current state
@@ -187,7 +223,7 @@ export default function HomePage() {
         });
 
         rzp.open();
-    }, [user, fetchOrders]);
+    }, [user, fetchOrders, fetchPickupSlots]);
 
     // ── Place New Order ───────────────────────────────────────────────────
     const handlePlaceOrder = async () => {
@@ -278,6 +314,39 @@ export default function HomePage() {
         }
     };
 
+    const formatPickupDate = (slotDate: string) =>
+        new Date(`${slotDate}T00:00:00`).toLocaleDateString('en-IN', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+        });
+
+    const handleSelectPickupSlot = async (slotDate: string, slotLabel: string) => {
+        if (!slotOrderId) return;
+
+        try {
+            setIsSelectingPickupSlot(true);
+            await axiosInstance.post(`/order/pickup-slot/${slotOrderId}`, { slotDate, slotLabel });
+            toast.success('Pickup slot selected successfully');
+            await fetchOrders();
+            await fetchPickupSlots(slotOrderId);
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to select pickup slot');
+            await fetchPickupSlots(slotOrderId);
+        } finally {
+            setIsSelectingPickupSlot(false);
+        }
+    };
+
+    const slotTargetOrder =
+        (slotOrderId && orders.find(o => o._id === slotOrderId)) ||
+        orders.find(o => ['Order Placed', 'Pending', 'Prepared'].includes(o.status));
+
+    useEffect(() => {
+        if (!slotTargetOrder || slotOrderId === slotTargetOrder._id) return;
+        fetchPickupSlots(slotTargetOrder._id);
+    }, [slotTargetOrder, slotOrderId, fetchPickupSlots]);
+
     const totalCartItems = Object.values(cart).reduce((a, b) => a + b, 0);
     const totalCartPrice = Object.entries(cart).reduce((total, [id, qty]) => {
         const item = laundryItems.find(i => i._id === id);
@@ -359,6 +428,73 @@ export default function HomePage() {
                                 )}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {slotTargetOrder && slotTargetOrder.status !== 'Cancelled' && (
+                <div className="bg-surface rounded-[2rem] border border-accent/20 shadow-lg overflow-hidden animate-fade-in">
+                    <div className="px-6 sm:px-8 py-6 border-b border-accent/20 bg-bg/50">
+                        <div className="flex items-start gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                                <HiCalendarDays className="w-6 h-6 text-primary" />
+                            </div>
+                            <div className="min-w-0">
+                                <h3 className="text-xl font-extrabold text-text">
+                                    Optional Pickup Slot Selection
+                                </h3>
+                                <p className="text-sm text-muted mt-1">
+                                    Order #{slotTargetOrder._id.slice(-6).toUpperCase()} is confirmed. Choose a pickup slot (from {minPickupDaysAhead} days ahead) or skip to continue with normal flow.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-6 sm:p-8">
+                        {slotTargetOrder.pickupSlot && (
+                            <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                                Selected slot: <strong>{formatPickupDate(slotTargetOrder.pickupSlot.slotDate)}</strong> ({slotTargetOrder.pickupSlot.slotLabel})
+                            </div>
+                        )}
+
+                        {isLoadingPickupSlots ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {[1, 2, 3, 4, 5, 6].map((n) => (
+                                    <div key={n} className="h-20 rounded-2xl bg-accent/10 animate-pulse" />
+                                ))}
+                            </div>
+                        ) : pickupSlots.length === 0 ? (
+                            <p className="text-sm text-muted">No slots available right now. You can continue without selecting a slot.</p>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {pickupSlots.map((slot) => {
+                                    const isSelected = slotTargetOrder.pickupSlot?.slotDate === slot.slotDate
+                                        && slotTargetOrder.pickupSlot?.slotLabel === slot.slotLabel;
+                                    const isDisabled = isSelectingPickupSlot || (!slot.isAvailable && !isSelected);
+
+                                    return (
+                                        <button
+                                            key={`${slot.slotDate}-${slot.slotLabel}`}
+                                            onClick={() => handleSelectPickupSlot(slot.slotDate, slot.slotLabel)}
+                                            disabled={isDisabled}
+                                            className={`text-left rounded-2xl border px-4 py-3 transition-all ${
+                                                isSelected
+                                                    ? 'border-emerald-300 bg-emerald-50'
+                                                    : slot.isAvailable
+                                                        ? 'border-accent/20 bg-bg hover:border-primary/40 hover:shadow-sm'
+                                                        : 'border-red-200 bg-red-50 opacity-70 cursor-not-allowed'
+                                            }`}
+                                        >
+                                            <p className="text-sm font-bold text-text">{formatPickupDate(slot.slotDate)}</p>
+                                            <p className="text-xs text-muted mt-1">{slot.slotLabel}</p>
+                                            <p className={`text-xs font-semibold mt-2 ${slot.remaining > 0 || isSelected ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                {isSelected ? 'Selected' : slot.remaining > 0 ? `${slot.remaining} slots left` : 'Slot full'}
+                                            </p>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -544,6 +680,14 @@ export default function HomePage() {
                                             <span>{order.totalClothes} Items</span>
                                             <span className="w-1.5 h-1.5 rounded-full bg-accent/30" />
                                             <span className="text-primary font-extrabold">₹{(order.moneyAmount / 100).toFixed(2)}</span>
+                                            {order.pickupSlot?.slotDate && (
+                                                <>
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-accent/30" />
+                                                    <span className="text-emerald-600 font-bold">
+                                                        Pickup: {formatPickupDate(order.pickupSlot.slotDate)} ({order.pickupSlot.slotLabel})
+                                                    </span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
 

@@ -153,6 +153,19 @@ export default function OrdersOverviewPage() {
                                                 </div>
                                             </div>
 
+                                            {o.pickupSlot?.slotDate && (
+                                                <div className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+                                                    <p className="text-[10px] text-emerald-700 font-semibold uppercase">Pickup Slot</p>
+                                                    <p className="text-xs text-emerald-800 font-bold">
+                                                        {new Date(`${o.pickupSlot.slotDate}T00:00:00`).toLocaleDateString('en-IN', {
+                                                            weekday: 'short',
+                                                            day: 'numeric',
+                                                            month: 'short',
+                                                        })} ({o.pickupSlot.slotLabel})
+                                                    </p>
+                                                </div>
+                                            )}
+
                                             {/* Items */}
                                             {o.items && o.items.length > 0 && (
                                                 <div className="mb-3">

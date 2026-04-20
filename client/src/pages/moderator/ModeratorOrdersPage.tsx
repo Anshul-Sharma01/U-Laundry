@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import type { RootState, AppDispatch } from '../../store/store';
+import { useDispatch } from 'react-redux';
+import type { AppDispatch } from '../../store/store';
 import { 
     HiClock, HiUser, HiMapPin, HiCurrencyRupee, 
     HiCheckCircle, HiXCircle, HiChevronDown, HiChevronUp,
@@ -40,6 +40,11 @@ interface Order {
     updatedAt: string;
     razorpayOrderId?: string;
     razorpayPaymentId?: string;
+    pickupSlot?: {
+        slotDate: string;
+        slotLabel: string;
+        selectedAt?: string;
+    };
 }
 
 const VALID_STATUSES = ['Payment left', 'Order Placed', 'Pending', 'Prepared', 'Picked Up', 'Cancelled'];
@@ -465,6 +470,18 @@ function OrderCard({
                                     <div className="pt-2 border-t border-accent/10">
                                         <div className="text-xs text-muted">Payment ID:</div>
                                         <div className="text-xs font-mono text-text break-all">{order.razorpayPaymentId}</div>
+                                    </div>
+                                )}
+                                {order.pickupSlot?.slotDate && (
+                                    <div className="pt-2 border-t border-accent/10">
+                                        <div className="text-xs text-muted">Pickup Slot:</div>
+                                        <div className="text-xs font-semibold text-emerald-700">
+                                            {new Date(`${order.pickupSlot.slotDate}T00:00:00`).toLocaleDateString('en-IN', {
+                                                weekday: 'short',
+                                                day: 'numeric',
+                                                month: 'short',
+                                            })} ({order.pickupSlot.slotLabel})
+                                        </div>
                                     </div>
                                 )}
                             </div>

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyJWT, verifyModerator } from "../middlewares/auth.middleware.js";
-import { addNewOrder, cancelOrder, getAllOrders, getOrderById, getOrdersByStatus, getOrdersByUser, updateOrderStatus, verifyRazorpaySignature } from "../controllers/order.controller.js";
+import { addNewOrder, cancelOrder, getAllOrders, getOrderById, getOrdersByStatus, getOrdersByUser, getPickupSlotsForOrder, selectPickupSlotForOrder, updateOrderStatus, verifyRazorpaySignature } from "../controllers/order.controller.js";
 
 
 const router = Router();
@@ -30,6 +30,12 @@ router.route("/details/:orderId")
 
 router.route("/verify-signature")
     .post(verifyRazorpaySignature);
+
+router.route("/pickup-slots/:orderId")
+    .get(getPickupSlotsForOrder);
+
+router.route("/pickup-slot/:orderId")
+    .post(selectPickupSlotForOrder);
 
 
 // ─── Moderator Routes ───────────────────────────────────────────────────
