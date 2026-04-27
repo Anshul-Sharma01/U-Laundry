@@ -1,2 +1,31 @@
 @import "tailwindcss";
 @import "./styles/themes.css";
+
+/* ── OrderTimeline animations ────────────────────────────────── */
+@keyframes soft-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.3);
+    }
+    50% {
+        transform: scale(1.08);
+        box-shadow: 0 0 0 6px rgba(99, 102, 241, 0);
+    }
+}
+
+@keyframes shimmer-down {
+    0% {
+        transform: translateY(-100%);
+    }
+    100% {
+        transform: translateY(200%);
+    }
+}
+
+.animate-soft-pulse {
+    animation: soft-pulse 2.4s ease-in-out infinite;
+}
+
+.animate-shimmer-down {
+    animation: shimmer-down 1.6s ease-in-out infinite;
+}

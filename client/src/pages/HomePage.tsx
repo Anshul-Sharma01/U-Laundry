@@ -4,11 +4,13 @@ import type { RootState } from '../store/store';
 import { 
     HiClock, HiOutlinePlus, 
     HiOutlineMinus, HiOutlineShoppingCart, HiOutlineReceiptRefund,
-    HiExclamationTriangle, HiXMark, HiCreditCard, HiCalendarDays
+    HiExclamationTriangle, HiXMark, HiCreditCard, HiCalendarDays,
+    HiChevronDown
 } from 'react-icons/hi2';
 import axiosInstance from '../helpers/axiosInstance';
 import toast from 'react-hot-toast';
 import socketService from '../helpers/socketService';
+import OrderTimeline from '../components/OrderTimeline';
 
 interface LaundryItem {
     _id: string;
@@ -62,6 +64,7 @@ export default function HomePage() {
     const [isLoadingPickupSlots, setIsLoadingPickupSlots] = useState(false);
     const [isSelectingPickupSlot, setIsSelectingPickupSlot] = useState(false);
     const [minPickupDaysAhead, setMinPickupDaysAhead] = useState(2);
+    const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
     // ── Pending payment order (status === 'Payment left') ────────────────
     const pendingOrder = orders.find(o => o.status === 'Payment left');
@@ -658,60 +661,93 @@ export default function HomePage() {
                         </div>
                     ) : (
                         <div className="flex flex-col gap-4">
-                            {orders.map(order => (
-                                <div key={order._id} className="flex flex-col md:flex-row md:items-center gap-4 p-5 rounded-[1.5rem] hover:bg-bg transition-colors border border-accent/10 hover:border-primary/30 group">
-                                    
-                                    <div className={`w-16 h-16 rounded-2xl border-2 flex items-center justify-center shrink-0 shadow-sm ${getStatusColors(order.status)}`}>
-                                        <HiClock className="w-7 h-7" />
-                                    </div>
-                                    
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-3 mb-1.5 align-middle">
-                                            <h4 className="text-lg font-extrabold text-text group-hover:text-primary transition-colors truncate">
-                                                Order #{order._id.slice(-6).toUpperCase()}
-                                            </h4>
-                                            <span className={`px-3 py-0.5 text-[0.65rem] font-bold uppercase tracking-widest rounded-full border ${getStatusColors(order.status)} whitespace-nowrap`}>
-                                                {order.status}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-2.5 text-sm font-semibold text-muted flex-wrap">
-                                            <span>{new Date(order.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                                            <span className="w-1.5 h-1.5 rounded-full bg-accent/30" />
-                                            <span>{order.totalClothes} Items</span>
-                                            <span className="w-1.5 h-1.5 rounded-full bg-accent/30" />
-                                            <span className="text-primary font-extrabold">₹{(order.moneyAmount / 100).toFixed(2)}</span>
-                                            {order.pickupSlot?.slotDate && (
-                                                <>
+                            {orders.map(order => {
+                                const isExpanded = expandedOrderId === order._id;
+                                return (
+                                    <div key={order._id} className={`rounded-[1.5rem] border transition-all duration-300 ${
+                                        isExpanded
+                                            ? 'border-primary/30 shadow-lg bg-bg/50'
+                                            : 'border-accent/10 hover:border-primary/30 hover:bg-bg'
+                                    }`}>
+                                        {/* Clickable header */}
+                                        <button
+                                            onClick={() => setExpandedOrderId(isExpanded ? null : order._id)}
+                                            className="w-full flex flex-col md:flex-row md:items-center gap-4 p-5 text-left group cursor-pointer"
+                                        >
+                                            <div className={`w-16 h-16 rounded-2xl border-2 flex items-center justify-center shrink-0 shadow-sm ${getStatusColors(order.status)}`}>
+                                                <HiClock className="w-7 h-7" />
+                                            </div>
+                                            
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-3 mb-1.5 align-middle">
+                                                    <h4 className="text-lg font-extrabold text-text group-hover:text-primary transition-colors truncate">
+                                                        Order #{order._id.slice(-6).toUpperCase()}
+                                                    </h4>
+                                                    <span className={`px-3 py-0.5 text-[0.65rem] font-bold uppercase tracking-widest rounded-full border ${getStatusColors(order.status)} whitespace-nowrap`}>
+                                                        {order.status}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2.5 text-sm font-semibold text-muted flex-wrap">
+                                                    <span>{new Date(order.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                                                     <span className="w-1.5 h-1.5 rounded-full bg-accent/30" />
-                                                    <span className="text-emerald-600 font-bold">
-                                                        Pickup: {formatPickupDate(order.pickupSlot.slotDate)} ({order.pickupSlot.slotLabel})
-                                                    </span>
-                                                </>
-                                            )}
+                                                    <span>{order.totalClothes} Items</span>
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-accent/30" />
+                                                    <span className="text-primary font-extrabold">₹{(order.moneyAmount / 100).toFixed(2)}</span>
+                                                    {order.pickupSlot?.slotDate && (
+                                                        <>
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-accent/30" />
+                                                            <span className="text-emerald-600 font-bold">
+                                                                Pickup: {formatPickupDate(order.pickupSlot.slotDate)} ({order.pickupSlot.slotLabel})
+                                                            </span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-3 ml-auto">
+                                                <div className="flex -space-x-3 overflow-hidden">
+                                                    {order.items.slice(0, 4).map((item, idx) => (
+                                                        <div key={idx} className="w-12 h-12 rounded-full border-[3px] border-surface bg-accent/10 overflow-hidden relative shadow-sm" title={`${item.quantity}x ${item.laundryItem?.title || 'Unknown'}`}>
+                                                            {item.laundryItem?.image?.secure_url ? (
+                                                                <img src={item.laundryItem.image.secure_url} alt="item" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                                            ) : (
+                                                                <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-text bg-bg">
+                                                                    x{item.quantity}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                    {order.items.length > 4 && (
+                                                        <div className="w-12 h-12 rounded-full border-[3px] border-surface bg-bg flex items-center justify-center relative z-10 text-xs font-bold text-muted shadow-sm">
+                                                            +{order.items.length - 4}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <HiChevronDown className={`w-5 h-5 text-muted transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                                            </div>
+                                        </button>
+
+                                        {/* Expandable timeline panel */}
+                                        <div
+                                            className="overflow-hidden transition-all duration-400 ease-in-out"
+                                            style={{
+                                                maxHeight: isExpanded ? '500px' : '0px',
+                                                opacity: isExpanded ? 1 : 0,
+                                            }}
+                                        >
+                                            <div className="px-5 pb-5 pt-0">
+                                                <div className="border-t border-accent/15 pt-4">
+                                                    <h5 className="text-xs font-bold text-muted uppercase tracking-widest mb-2">Order Progress</h5>
+                                                    <OrderTimeline
+                                                        currentStatus={order.status}
+                                                        createdAt={order.createdAt}
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-
-                                    <div className="flex -space-x-3 overflow-hidden ml-auto">
-                                        {order.items.slice(0, 4).map((item, idx) => (
-                                            <div key={idx} className="w-12 h-12 rounded-full border-[3px] border-surface bg-accent/10 overflow-hidden relative shadow-sm" title={`${item.quantity}x ${item.laundryItem?.title || 'Unknown'}`}>
-                                                {item.laundryItem?.image?.secure_url ? (
-                                                    <img src={item.laundryItem.image.secure_url} alt="item" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                                                ) : (
-                                                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-text bg-bg">
-                                                        x{item.quantity}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        ))}
-                                        {order.items.length > 4 && (
-                                            <div className="w-12 h-12 rounded-full border-[3px] border-surface bg-bg flex items-center justify-center relative z-10 text-xs font-bold text-muted shadow-sm">
-                                                +{order.items.length - 4}
-                                            </div>
-                                        )}
-                                    </div>
-                                    
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

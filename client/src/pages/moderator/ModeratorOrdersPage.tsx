@@ -10,6 +10,7 @@ import { updateModeratorOrderStatus } from '../../store/slices/moderatorSlice';
 import axiosInstance from '../../helpers/axiosInstance';
 import toast from 'react-hot-toast';
 import socketService from '../../helpers/socketService';
+import OrderTimeline from '../../components/OrderTimeline';
 
 interface OrderItem {
     laundryItem: {
@@ -491,6 +492,16 @@ function OrderCard({
                     {/* Status Update */}
                     <div className="p-4 bg-primary/5 rounded-xl border border-primary/20">
                         <h4 className="text-sm font-bold text-muted uppercase tracking-wider mb-3">Update Status</h4>
+
+                        {/* Visual Timeline */}
+                        <div className="mb-4 p-4 bg-bg rounded-xl border border-accent/10">
+                            <OrderTimeline
+                                currentStatus={order.status}
+                                createdAt={order.createdAt}
+                                updatedAt={order.updatedAt}
+                                compact
+                            />
+                        </div>
                         <div className="flex items-center gap-3">
                             <select
                                 value={selectedStatus}
