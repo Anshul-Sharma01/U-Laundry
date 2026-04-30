@@ -17,6 +17,7 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import PendingVerificationsPage from './pages/admin/PendingVerificationsPage'
 import ManageUsersPage from './pages/admin/ManageUsersPage'
 import OrdersOverviewPage from './pages/admin/OrdersOverviewPage'
+import PricingRulesPage from './pages/admin/PricingRulesPage'
 import LaundryModeratorPage from './pages/moderator/LaundryModeratorPage'
 import ModeratorOrdersPage from './pages/moderator/ModeratorOrdersPage'
 import ProfilePage from './pages/ProfilePage'
@@ -58,6 +59,7 @@ function App() {
                 <Route path="/admin/pending" element={<PendingVerificationsPage />} />
                 <Route path="/admin/users" element={<ManageUsersPage />} />
                 <Route path="/admin/orders" element={<OrdersOverviewPage />} />
+                <Route path="/admin/pricing" element={<PricingRulesPage />} />
               </Route>
 
               {/* Moderator-only Routes */}

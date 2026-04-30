@@ -1,6 +1,7 @@
 import { isValidObjectId } from "mongoose";
 import { Order } from "../models/order.model.js";
 import { LaundryItem } from "../models/laundryItem.model.js";
+import { PricingRule } from "../models/pricingRule.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -10,6 +11,7 @@ import razorpayService from "../utils/razorpayService.js";
 import crypto from "crypto";
 import { getIO } from "../utils/socketManager.js";
 import { PickupSlotInventory } from "../models/pickupSlotInventory.model.js";
+import { calculateDiscounts } from "../utils/pricingEngine.js";
 
 const VALID_STATUSES = ['Order Placed', 'Pending', 'Prepared', 'Picked Up', 'Cancelled', 'Payment left'];
 const PICKUP_SLOT_LABELS = [
@@ -170,9 +172,25 @@ const addNewOrder = asyncHandler(async(req, res) => {
         throw new ApiError(400, "Order total must be greater than zero");
     }
 
+    // ── Apply pricing engine discounts ────────────────────────────────────
+    const subtotalPaisa = Math.round(moneyAmount * 100);
+
+    // Count user's past completed orders for loyalty discounts
+    const userOrderCount = await Order.countDocuments({
+        user: userId,
+        status: { $in: ['Order Placed', 'Pending', 'Prepared', 'Picked Up'] }
+    });
+
+    // Fetch active pricing rules
+    const activeRules = await PricingRule.find({ isActive: true }).sort({ priority: 1 });
+
+    const currentHour = new Date().getHours();
+    const pricingResult = calculateDiscounts(subtotalPaisa, totalClothes, currentHour, userOrderCount, activeRules);
+
+    const amountInPaisa = pricingResult.finalAmount;
+
     // ── Create Razorpay order ────────────────────────────────────────────
     const receipt = `receipt_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-    const amountInPaisa = Math.round(moneyAmount * 100);
     
     const paymentOrder = await razorpayService.createOrder(amountInPaisa, currency, receipt);
 
@@ -180,7 +198,10 @@ const addNewOrder = asyncHandler(async(req, res) => {
     const order = await Order.create({
         items: validatedItems,
         totalClothes,
+        subtotalAmount: subtotalPaisa,
         moneyAmount: amountInPaisa,
+        appliedDiscounts: pricingResult.discounts,
+        totalDiscount: pricingResult.totalDiscount,
         user: userId,
         razorpayOrderId: paymentOrder.id,
         receipt,

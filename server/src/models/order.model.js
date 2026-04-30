@@ -38,6 +38,20 @@ const orderSchema = new Schema({
         type: Number,
         default : 0,
     },
+    subtotalAmount : {
+        type : Number,
+        default : 0
+    },
+    appliedDiscounts : [{
+        ruleType : { type : String },
+        label :    { type : String },
+        discountPercent : { type : Number },
+        discountAmount :  { type : Number }   // in paisa
+    }],
+    totalDiscount : {
+        type : Number,
+        default : 0
+    },
     date : {
         type : Date,
         default : Date.now,

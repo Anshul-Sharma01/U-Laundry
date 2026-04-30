@@ -5,7 +5,7 @@ import {
     HiClock, HiOutlinePlus, 
     HiOutlineMinus, HiOutlineShoppingCart, HiOutlineReceiptRefund,
     HiExclamationTriangle, HiXMark, HiCreditCard, HiCalendarDays,
-    HiChevronDown
+    HiChevronDown, HiReceiptPercent, HiSparkles
 } from 'react-icons/hi2';
 import axiosInstance from '../helpers/axiosInstance';
 import toast from 'react-hot-toast';
@@ -22,11 +22,21 @@ interface LaundryItem {
     maxQuantityPerOrder: number;
 }
 
+interface AppliedDiscount {
+    ruleType: string;
+    label: string;
+    discountPercent: number;
+    discountAmount: number;
+}
+
 interface Order {
     _id: string;
     items: { laundryItem: LaundryItem, quantity: number }[];
     totalClothes: number;
     moneyAmount: number;
+    subtotalAmount?: number;
+    appliedDiscounts?: AppliedDiscount[];
+    totalDiscount?: number;
     status: string;
     createdAt: string;
     razorpayOrderId?: string;
@@ -36,6 +46,15 @@ interface Order {
         slotLabel: string;
         selectedAt?: string;
     };
+}
+
+interface DiscountPreview {
+    subtotalPaisa: number;
+    totalClothes: number;
+    userOrderCount: number;
+    discounts: AppliedDiscount[];
+    totalDiscount: number;
+    finalAmount: number;
 }
 
 interface PickupSlot {
@@ -65,6 +84,8 @@ export default function HomePage() {
     const [isSelectingPickupSlot, setIsSelectingPickupSlot] = useState(false);
     const [minPickupDaysAhead, setMinPickupDaysAhead] = useState(2);
     const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+    const [discountPreview, setDiscountPreview] = useState<DiscountPreview | null>(null);
+    const [isLoadingDiscounts, setIsLoadingDiscounts] = useState(false);
 
     // ── Pending payment order (status === 'Payment left') ────────────────
     const pendingOrder = orders.find(o => o.status === 'Payment left');
@@ -356,6 +377,32 @@ export default function HomePage() {
         return total + (item?.pricePerUnit || 0) * qty;
     }, 0);
 
+    // ── Fetch discount preview when cart changes ──────────────────────────
+    useEffect(() => {
+        if (totalCartItems === 0) {
+            setDiscountPreview(null);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            try {
+                setIsLoadingDiscounts(true);
+                const itemsPayload = Object.entries(cart).map(([laundryItem, quantity]) => ({
+                    laundryItem,
+                    quantity
+                }));
+                const { data } = await axiosInstance.post('/pricing/preview', { items: itemsPayload });
+                setDiscountPreview(data?.data || null);
+            } catch {
+                setDiscountPreview(null);
+            } finally {
+                setIsLoadingDiscounts(false);
+            }
+        }, 400); // Debounce 400ms
+
+        return () => clearTimeout(timer);
+    }, [cart, totalCartItems]);
+
     return (
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in space-y-8">
 
@@ -595,40 +642,83 @@ export default function HomePage() {
                     )}
                     
                     {/* Place Order CTA */}
-                    <div className="mt-10 pt-8 border-t border-accent/20 flex flex-col sm:flex-row justify-between items-center gap-6">
-                        <div className="text-center sm:text-left">
-                           <p className="text-sm font-bold text-muted uppercase tracking-wider mb-1">Total Amount</p>
-                           <p className="text-3xl font-extrabold text-text">₹{totalCartPrice.toFixed(2)}</p>
-                        </div>
+                    <div className="mt-10 pt-8 border-t border-accent/20 space-y-5">
 
-                        <div className="relative w-full sm:w-auto">
-                            <button
-                                onClick={handlePlaceOrder}
-                                disabled={totalCartItems === 0 || isPlacingOrder || !!pendingOrder}
-                                className={`px-8 py-4 rounded-full font-bold text-lg flex items-center gap-3 transition-all duration-300 shadow-xl w-full sm:w-auto justify-center ${
-                                    totalCartItems > 0 && !isPlacingOrder && !pendingOrder
-                                    ? 'bg-gradient-to-r from-primary to-secondary text-white hover:shadow-primary/30 hover:-translate-y-1' 
-                                    : 'bg-surface text-muted cursor-not-allowed border border-accent/20'
-                                }`}
-                                title={pendingOrder ? "Complete or cancel your pending payment first" : undefined}
-                            >
-                                {isPlacingOrder ? (
-                                    <>
-                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        Creating Order...
-                                    </>
-                                ) : (
-                                    <>
-                                        Place Order Securely
-                                        <span className="bg-white/20 px-2.5 py-1 rounded-full text-sm ml-2">{totalCartItems} Items</span>
-                                    </>
+                        {/* ── Live Discount Preview ── */}
+                        {totalCartItems > 0 && discountPreview && discountPreview.discounts.length > 0 && (
+                            <div className="rounded-2xl border-2 border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 p-4 animate-fade-in">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <HiSparkles className="w-5 h-5 text-emerald-600" />
+                                    <span className="text-sm font-extrabold text-emerald-800 uppercase tracking-wider">Discounts Applied</span>
+                                </div>
+                                <div className="space-y-2">
+                                    {discountPreview.discounts.map((d, i) => (
+                                        <div key={i} className="flex items-center justify-between text-sm">
+                                            <div className="flex items-center gap-2">
+                                                <HiReceiptPercent className="w-4 h-4 text-emerald-500" />
+                                                <span className="text-emerald-800 font-semibold">{d.label}</span>
+                                                <span className="text-[0.65rem] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full">
+                                                    {d.discountPercent}% OFF
+                                                </span>
+                                            </div>
+                                            <span className="font-extrabold text-emerald-700">-₹{(d.discountAmount / 100).toFixed(2)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-3 pt-3 border-t border-emerald-200 flex items-center justify-between">
+                                    <span className="text-sm font-bold text-emerald-700">You save</span>
+                                    <span className="text-lg font-extrabold text-emerald-700">₹{(discountPreview.totalDiscount / 100).toFixed(2)}</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Loading shimmer for discount preview */}
+                        {totalCartItems > 0 && isLoadingDiscounts && !discountPreview && (
+                            <div className="h-16 rounded-2xl bg-emerald-50 border border-emerald-200 animate-pulse" />
+                        )}
+
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
+                            <div className="text-center sm:text-left">
+                               <p className="text-sm font-bold text-muted uppercase tracking-wider mb-1">Total Amount</p>
+                               {discountPreview && discountPreview.totalDiscount > 0 ? (
+                                   <div className="flex items-center gap-3">
+                                       <p className="text-lg font-bold text-muted line-through">₹{totalCartPrice.toFixed(2)}</p>
+                                       <p className="text-3xl font-extrabold text-emerald-700">₹{(discountPreview.finalAmount / 100).toFixed(2)}</p>
+                                   </div>
+                               ) : (
+                                   <p className="text-3xl font-extrabold text-text">₹{totalCartPrice.toFixed(2)}</p>
+                               )}
+                            </div>
+
+                            <div className="relative w-full sm:w-auto">
+                                <button
+                                    onClick={handlePlaceOrder}
+                                    disabled={totalCartItems === 0 || isPlacingOrder || !!pendingOrder}
+                                    className={`px-8 py-4 rounded-full font-bold text-lg flex items-center gap-3 transition-all duration-300 shadow-xl w-full sm:w-auto justify-center ${
+                                        totalCartItems > 0 && !isPlacingOrder && !pendingOrder
+                                        ? 'bg-gradient-to-r from-primary to-secondary text-white hover:shadow-primary/30 hover:-translate-y-1' 
+                                        : 'bg-surface text-muted cursor-not-allowed border border-accent/20'
+                                    }`}
+                                    title={pendingOrder ? "Complete or cancel your pending payment first" : undefined}
+                                >
+                                    {isPlacingOrder ? (
+                                        <>
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            Creating Order...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Place Order Securely
+                                            <span className="bg-white/20 px-2.5 py-1 rounded-full text-sm ml-2">{totalCartItems} Items</span>
+                                        </>
+                                    )}
+                                </button>
+                                {pendingOrder && totalCartItems > 0 && (
+                                    <p className="text-xs text-orange-500 font-semibold mt-2 text-center">
+                                        ⚠️ Complete or cancel your pending payment first
+                                    </p>
                                 )}
-                            </button>
-                            {pendingOrder && totalCartItems > 0 && (
-                                <p className="text-xs text-orange-500 font-semibold mt-2 text-center">
-                                    ⚠️ Complete or cancel your pending payment first
-                                </p>
-                            )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -742,6 +832,33 @@ export default function HomePage() {
                                                         currentStatus={order.status}
                                                         createdAt={order.createdAt}
                                                     />
+
+                                                    {/* Discount breakdown */}
+                                                    {order.appliedDiscounts && order.appliedDiscounts.length > 0 && (
+                                                        <div className="mt-4 pt-3 border-t border-accent/15">
+                                                            <h5 className="text-xs font-bold text-muted uppercase tracking-widest mb-2">Discounts Applied</h5>
+                                                            <div className="space-y-1.5">
+                                                                {order.appliedDiscounts.map((d, i) => (
+                                                                    <div key={i} className="flex items-center justify-between text-sm">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <HiReceiptPercent className="w-3.5 h-3.5 text-emerald-500" />
+                                                                            <span className="text-text/80 font-medium">{d.label}</span>
+                                                                            <span className="text-[0.6rem] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full">{d.discountPercent}%</span>
+                                                                        </div>
+                                                                        <span className="font-bold text-emerald-600">-₹{(d.discountAmount / 100).toFixed(2)}</span>
+                                                                    </div>
+                                                                ))}
+                                                                <div className="flex items-center justify-between text-sm pt-1.5 border-t border-accent/10">
+                                                                    <span className="font-semibold text-muted">Subtotal</span>
+                                                                    <span className="font-bold text-muted line-through">₹{((order.subtotalAmount || order.moneyAmount) / 100).toFixed(2)}</span>
+                                                                </div>
+                                                                <div className="flex items-center justify-between text-sm">
+                                                                    <span className="font-bold text-emerald-700">You saved</span>
+                                                                    <span className="font-extrabold text-emerald-700">₹{((order.totalDiscount || 0) / 100).toFixed(2)}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

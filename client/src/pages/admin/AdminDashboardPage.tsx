@@ -46,6 +46,7 @@ export default function AdminDashboardPage() {
         { title: 'Pending Verifications', desc: 'Review student registrations', icon: <HiShieldCheck size={24} />, to: '/admin/pending', color: 'text-amber-500', bg: 'bg-amber-50' },
         { title: 'Manage Users', desc: 'View and manage all users', icon: <HiUserGroup size={24} />, to: '/admin/users', color: 'text-blue-500', bg: 'bg-blue-50' },
         { title: 'Orders Overview', desc: 'Track and update orders', icon: <HiClipboardDocumentList size={24} />, to: '/admin/orders', color: 'text-violet-500', bg: 'bg-violet-50' },
+        { title: 'Pricing Rules', desc: 'Manage discounts & offers', icon: <HiCurrencyRupee size={24} />, to: '/admin/pricing', color: 'text-emerald-500', bg: 'bg-emerald-50' },
     ];
 
     return (
@@ -240,7 +241,7 @@ export default function AdminDashboardPage() {
                     )}
 
                     {/* ── Quick Links ── */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         {quickLinks.map((l) => (
                             <Link 
                                 key={l.title} 

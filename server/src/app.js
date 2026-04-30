@@ -11,6 +11,7 @@ import userRouter from "./routes/user.routes.js";
 import orderRouter from "./routes/order.routes.js";
 import laundryItemRouter from "./routes/laundryItem.routes.js";
 import chatbotRouter from "./routes/chatbot.routes.js";
+import pricingRouter from "./routes/pricing.routes.js";
 import { handleRazorpayWebhook } from "./controllers/razorpayWebhook.controller.js";
 
 const app = express();
@@ -58,6 +59,8 @@ app.use("/api/v1/orders", orderRouter);
 app.use("/api/v1/laundry-items", laundryItemRouter);
 
 app.use("/api/v1/chatbot", chatbotRouter);
+
+app.use("/api/v1/pricing", pricingRouter);
 
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────
