@@ -392,7 +392,13 @@ export default function HomePage() {
                     quantity
                 }));
                 const { data } = await axiosInstance.post('/pricing/preview', { items: itemsPayload });
-                setDiscountPreview(data?.data || null);
+                const preview = data?.data;
+                // Only show the panel if there are actual discounts
+                if (preview && preview.discounts && preview.discounts.length > 0) {
+                    setDiscountPreview(preview);
+                } else {
+                    setDiscountPreview(null);
+                }
             } catch {
                 setDiscountPreview(null);
             } finally {
