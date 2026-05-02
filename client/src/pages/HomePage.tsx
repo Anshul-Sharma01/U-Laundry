@@ -5,7 +5,7 @@ import {
     HiClock, HiOutlinePlus, 
     HiOutlineMinus, HiOutlineShoppingCart, HiOutlineReceiptRefund,
     HiExclamationTriangle, HiXMark, HiCreditCard, HiCalendarDays,
-    HiChevronDown, HiReceiptPercent, HiSparkles
+    HiChevronDown, HiReceiptPercent, HiSparkles, HiCheckCircle
 } from 'react-icons/hi2';
 import axiosInstance from '../helpers/axiosInstance';
 import toast from 'react-hot-toast';
@@ -507,49 +507,58 @@ export default function HomePage() {
                     </div>
 
                     <div className="p-6 sm:p-8">
-                        {slotTargetOrder.pickupSlot && (
-                            <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                                Selected slot: <strong>{formatPickupDate(slotTargetOrder.pickupSlot.slotDate)}</strong> ({slotTargetOrder.pickupSlot.slotLabel})
+                        {slotTargetOrder.pickupSlot ? (
+                            <div className="rounded-2xl border-2 border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 px-5 py-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center shrink-0">
+                                        <HiCheckCircle className="w-6 h-6 text-emerald-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-extrabold text-emerald-800">Pickup Slot Confirmed</p>
+                                        <p className="text-sm text-emerald-700 mt-0.5">
+                                            <strong>{formatPickupDate(slotTargetOrder.pickupSlot.slotDate)}</strong> — {slotTargetOrder.pickupSlot.slotLabel}
+                                        </p>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-emerald-600/70 mt-2 ml-[52px]">Your pickup slot has been locked in. Contact support if you need to reschedule.</p>
                             </div>
-                        )}
-
-                        {isLoadingPickupSlots ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {[1, 2, 3, 4, 5, 6].map((n) => (
-                                    <div key={n} className="h-20 rounded-2xl bg-accent/10 animate-pulse" />
-                                ))}
-                            </div>
-                        ) : pickupSlots.length === 0 ? (
-                            <p className="text-sm text-muted">No slots available right now. You can continue without selecting a slot.</p>
                         ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {pickupSlots.map((slot) => {
-                                    const isSelected = slotTargetOrder.pickupSlot?.slotDate === slot.slotDate
-                                        && slotTargetOrder.pickupSlot?.slotLabel === slot.slotLabel;
-                                    const isDisabled = isSelectingPickupSlot || (!slot.isAvailable && !isSelected);
+                            <>
+                                {isLoadingPickupSlots ? (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        {[1, 2, 3, 4, 5, 6].map((n) => (
+                                            <div key={n} className="h-20 rounded-2xl bg-accent/10 animate-pulse" />
+                                        ))}
+                                    </div>
+                                ) : pickupSlots.length === 0 ? (
+                                    <p className="text-sm text-muted">No slots available right now. You can continue without selecting a slot.</p>
+                                ) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        {pickupSlots.map((slot) => {
+                                            const isDisabled = isSelectingPickupSlot || !slot.isAvailable;
 
-                                    return (
-                                        <button
-                                            key={`${slot.slotDate}-${slot.slotLabel}`}
-                                            onClick={() => handleSelectPickupSlot(slot.slotDate, slot.slotLabel)}
-                                            disabled={isDisabled}
-                                            className={`text-left rounded-2xl border px-4 py-3 transition-all ${
-                                                isSelected
-                                                    ? 'border-emerald-300 bg-emerald-50'
-                                                    : slot.isAvailable
-                                                        ? 'border-accent/20 bg-bg hover:border-primary/40 hover:shadow-sm'
-                                                        : 'border-red-200 bg-red-50 opacity-70 cursor-not-allowed'
-                                            }`}
-                                        >
-                                            <p className="text-sm font-bold text-text">{formatPickupDate(slot.slotDate)}</p>
-                                            <p className="text-xs text-muted mt-1">{slot.slotLabel}</p>
-                                            <p className={`text-xs font-semibold mt-2 ${slot.remaining > 0 || isSelected ? 'text-emerald-600' : 'text-red-600'}`}>
-                                                {isSelected ? 'Selected' : slot.remaining > 0 ? `${slot.remaining} slots left` : 'Slot full'}
-                                            </p>
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                                            return (
+                                                <button
+                                                    key={`${slot.slotDate}-${slot.slotLabel}`}
+                                                    onClick={() => handleSelectPickupSlot(slot.slotDate, slot.slotLabel)}
+                                                    disabled={isDisabled}
+                                                    className={`text-left rounded-2xl border px-4 py-3 transition-all ${
+                                                        slot.isAvailable
+                                                            ? 'border-accent/20 bg-bg hover:border-primary/40 hover:shadow-sm'
+                                                            : 'border-red-200 bg-red-50 opacity-70 cursor-not-allowed'
+                                                    }`}
+                                                >
+                                                    <p className="text-sm font-bold text-text">{formatPickupDate(slot.slotDate)}</p>
+                                                    <p className="text-xs text-muted mt-1">{slot.slotLabel}</p>
+                                                    <p className={`text-xs font-semibold mt-2 ${slot.remaining > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                        {slot.remaining > 0 ? `${slot.remaining} slots left` : 'Slot full'}
+                                                    </p>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
@@ -827,7 +836,7 @@ export default function HomePage() {
                                         <div
                                             className="overflow-hidden transition-all duration-400 ease-in-out"
                                             style={{
-                                                maxHeight: isExpanded ? '500px' : '0px',
+                                                maxHeight: isExpanded ? '2000px' : '0px',
                                                 opacity: isExpanded ? 1 : 0,
                                             }}
                                         >
