@@ -17,6 +17,7 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import PendingVerificationsPage from './pages/admin/PendingVerificationsPage'
 import ManageUsersPage from './pages/admin/ManageUsersPage'
 import OrdersOverviewPage from './pages/admin/OrdersOverviewPage'
+import OrdersPage from './pages/OrdersPage'
 import PricingRulesPage from './pages/admin/PricingRulesPage'
 import LaundryModeratorPage from './pages/moderator/LaundryModeratorPage'
 import ModeratorOrdersPage from './pages/moderator/ModeratorOrdersPage'
@@ -51,7 +52,7 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/profile" element={<ProfilePage />} />
-              {/* Future dashboard routes like /orders would go here */}
+              <Route path="/orders" element={<OrdersPage />} />
 
               {/* Admin-only Routes */}
               <Route element={<AdminRoute />}>
