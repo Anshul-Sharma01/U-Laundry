@@ -243,7 +243,7 @@ const addNewOrder = asyncHandler(async(req, res) => {
                 <p>Your laundry order has been initiated.</p>
                 <div style="background: #FFF3E0; padding: 15px; border-radius: 8px; margin: 15px 0;">
                     <p style="margin: 0;"><strong>Status:</strong> Payment Pending</p>
-                    <p style="margin: 5px 0 0 0;"><strong>Amount:</strong> ₹${moneyAmount}</p>
+                    <p style="margin: 5px 0 0 0;"><strong>Amount:</strong> ₹${(amountInPaisa / 100).toFixed(2)}</p>
                 </div>
                 <p>Please complete the payment on the dashboard to confirm your pickup.</p>
                 <p><strong>Order ID:</strong> ${order._id}</p>
@@ -473,6 +473,11 @@ const getOrdersByUser = asyncHandler(async (req, res) => {
     const { userId } = req.params;
     if(!isValidObjectId(userId)){
         throw new ApiError(400, "Invalid User Id");
+    }
+
+    // Authorization: students can only view their own orders
+    if (req.user.role === 'student' && req.user._id.toString() !== userId) {
+        throw new ApiError(403, "You can only view your own orders");
     }
 
     const totalOrders = await Order.countDocuments({ user : userId });

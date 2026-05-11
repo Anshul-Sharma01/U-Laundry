@@ -90,6 +90,9 @@ export default function OrdersPage() {
             if (order.status === 'Cancelled') {
                 cancelledCount++;
                 return; // Don't count cancelled orders towards spending
+            } else if (order.status === 'Payment left') {
+                inProgressCount++;
+                return; // Don't count unpaid orders towards spending
             } else if (order.status === 'Completed' || order.status === 'Picked Up') {
                 completedCount++;
             } else {

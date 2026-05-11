@@ -39,7 +39,14 @@ class RazorpayService {
             .update(body)
             .digest("hex");
 
-        return expectedSignature === signature;
+        try {
+            return crypto.timingSafeEqual(
+                Buffer.from(expectedSignature, "hex"),
+                Buffer.from(signature, "hex")
+            );
+        } catch {
+            return false;
+        }
     }
 
     verifyWebhookSignature(rawBody, receivedSignature) {

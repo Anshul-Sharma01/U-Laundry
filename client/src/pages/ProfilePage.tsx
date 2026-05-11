@@ -195,8 +195,8 @@ export default function ProfilePage() {
                             <div className="flex items-center justify-between p-4 rounded-2xl bg-bg border border-accent/10">
                                 <span className="font-bold text-text/70">Admin Approval</span>
                                 <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full ${
-                                    user.verificationStatus === 'Approved' ? 'text-green-600 bg-green-100' :
-                                    user.verificationStatus === 'Rejected' ? 'text-red-600 bg-red-100' :
+                                    user.verificationStatus === 'approved' ? 'text-green-600 bg-green-100' :
+                                    user.verificationStatus === 'rejected' ? 'text-red-600 bg-red-100' :
                                     'text-amber-600 bg-amber-100'
                                 }`}>
                                     {user.verificationStatus || 'Pending'}

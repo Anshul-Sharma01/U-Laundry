@@ -213,6 +213,7 @@ const authSlice = createSlice({
             .addCase(loginUser.fulfilled, (state, action) => {
                 state.isLoading = false;
                 state.otpSent = true;
+                state.otpEmail = action.meta.arg.email;
                 state.successMessage = action.payload.message;
             })
             .addCase(loginUser.rejected, (state, action) => {
