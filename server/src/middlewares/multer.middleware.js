@@ -22,8 +22,23 @@ const storage = multer.diskStorage({
 })
 
 
+// File type whitelist — only allow images
+const fileFilter = (req, file, cb) => {
+    const allowedMimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error("Only image files (jpeg, jpg, png, webp, gif) are allowed"), false);
+    }
+};
+
 export const upload = multer({
-    storage
+    storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 5 MB max
+        files: 1,
+    },
+    fileFilter,
 })
 
 

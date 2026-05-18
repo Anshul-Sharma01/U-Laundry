@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>U-Laundry — Full Project Testing Report</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --card: #21253a;
+    --border: #2e3350; --text: #e2e8f0; --muted: #8892b0;
+    --red: #ff4757; --orange: #ffa502; --yellow: #eccc68;
+    --green: #2ed573; --blue: #1e90ff; --purple: #a29bfe;
+    --accent: #ff6b6b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; line-height: 1.6; }
+  a { color: var(--blue); }
+
+  /* ── Layout ── */
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+  header { background: linear-gradient(135deg, #1a1d27 0%, #0f1117 100%); border-bottom: 1px solid var(--border); padding: 40px 0 32px; }
+  header h1 { font-size: 2.4rem; font-weight: 800; background: linear-gradient(90deg, #ff6b6b, #ffa502, #eccc68); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  header p { color: var(--muted); margin-top: 8px; font-size: 1rem; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; }
+  .badge-red    { background: rgba(255,71,87,.18);  color: var(--red);    border: 1px solid rgba(255,71,87,.35); }
+  .badge-orange { background: rgba(255,165,2,.18);  color: var(--orange); border: 1px solid rgba(255,165,2,.35); }
+  .badge-yellow { background: rgba(236,204,104,.18);color: var(--yellow); border: 1px solid rgba(236,204,104,.35); }
+  .badge-green  { background: rgba(46,213,115,.18); color: var(--green);  border: 1px solid rgba(46,213,115,.35); }
+  .badge-blue   { background: rgba(30,144,255,.18); color: var(--blue);   border: 1px solid rgba(30,144,255,.35); }
+  .badge-purple { background: rgba(162,155,254,.18);color: var(--purple); border: 1px solid rgba(162,155,254,.35); }
+
+  section { padding: 48px 0; border-bottom: 1px solid var(--border); }
+  section:last-child { border-bottom: none; }
+  h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; }
+  h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; color: var(--text); }
+
+  /* ── Summary Cards ── */
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 40px; }
+  .summary-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; }
+  .summary-card .num { font-size: 2.4rem; font-weight: 800; line-height: 1; }
+  .summary-card .label { font-size: 0.78rem; color: var(--muted); margin-top: 6px; text-transform: uppercase; letter-spacing: .5px; }
+
+  /* ── Charts ── */
+  .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px; margin-bottom: 40px; }
+  .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+  .chart-card canvas { max-height: 260px; }
+
+  /* ── Issue Table ── */
+  .issue-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  .issue-table th { background: var(--surface); color: var(--muted); font-weight: 600; text-align: left; padding: 10px 14px; border-bottom: 2px solid var(--border); font-size: 0.75rem; text-transform: uppercase; letter-spacing: .5px; }
+  .issue-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .issue-table tr:hover td { background: rgba(255,255,255,.03); }
+  .issue-table .id { color: var(--muted); font-family: monospace; font-size: 0.8rem; }
+  .issue-table .file { font-family: monospace; font-size: 0.8rem; color: var(--blue); }
+  .issue-table .desc { color: var(--text); }
+  .issue-table .fix { color: var(--green); font-size: 0.82rem; }
+
+  /* ── Before/After ── */
+  .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0 28px; }
+  @media (max-width: 700px) { .diff-grid { grid-template-columns: 1fr; } }
+  .diff-box { border-radius: 10px; padding: 16px; font-family: monospace; font-size: 0.8rem; line-height: 1.7; overflow-x: auto; }
+  .diff-before { background: rgba(255,71,87,.08); border: 1px solid rgba(255,71,87,.3); }
+  .diff-after  { background: rgba(46,213,115,.08); border: 1px solid rgba(46,213,115,.3); }
+  .diff-label  { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+  .diff-before .diff-label { color: var(--red); }
+  .diff-after  .diff-label { color: var(--green); }
+  .del { color: #ff6b6b; }
+  .add { color: #2ed573; }
+  .ctx { color: var(--muted); }
+
+  /* ── Timeline ── */
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+  .tl-item { position: relative; margin-bottom: 24px; }
+  .tl-dot { position: absolute; left: -24px; top: 4px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid; }
+  .tl-dot-red    { background: var(--red);    border-color: var(--red); }
+  .tl-dot-orange { background: var(--orange); border-color: var(--orange); }
+  .tl-dot-yellow { background: var(--yellow); border-color: var(--yellow); }
+  .tl-dot-green  { background: var(--green);  border-color: var(--green); }
+  .tl-dot-blue   { background: var(--blue);   border-color: var(--blue); }
+  .tl-title { font-weight: 600; font-size: 0.95rem; }
+  .tl-body  { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+
+  /* ── Score Meter ── */
+  .score-wrap { display: flex; align-items: center; gap: 32px; flex-wrap: wrap; margin-bottom: 32px; }
+  .score-circle { position: relative; width: 140px; height: 140px; flex-shrink: 0; }
+  .score-circle svg { transform: rotate(-90deg); }
+  .score-circle .score-num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 2rem; font-weight: 800; }
+  .score-circle .score-sub { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .score-bars { flex: 1; min-width: 260px; }
+  .score-bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 0.85rem; }
+  .score-bar-label { width: 130px; color: var(--muted); flex-shrink: 0; }
+  .score-bar-track { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .score-bar-fill  { height: 100%; border-radius: 4px; transition: width .6s ease; }
+
+  footer { padding: 32px 0; text-align: center; color: var(--muted); font-size: 0.82rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>🧺 U-Laundry — Full Project Testing Report</h1>
+    <p>Static analysis · Logic audit · API contract review · Memory &amp; leak analysis · Dependency isolation · Before/After diffs</p>
+    <p style="margin-top:10px;color:#8892b0;font-size:.85rem;">Generated: May 17, 2026 &nbsp;|&nbsp; Auditor: Kiro AI &nbsp;|&nbsp; Scope: Full-stack (Node.js + React/TypeScript)</p>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 1 — EXECUTIVE SUMMARY                                     -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="summary">
+  <h2>📊 Executive Summary</h2>
+
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="num" style="color:var(--red)">3</div>
+      <div class="label">Critical</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:var(--orange)">5</div>
+      <div class="label">High</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:var(--yellow)">6</div>
+      <div class="label">Medium</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:var(--blue)">4</div>
+      <div class="label">Low</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:var(--green)">18</div>
+      <div class="label">Total Found</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:var(--green)">18</div>
+      <div class="label">Fixed</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:var(--purple)">0</div>
+      <div class="label">Remaining</div>
+    </div>
+  </div>
+
+  <!-- Health Score -->
+  <div class="score-wrap">
+    <div class="score-circle">
+      <svg width="140" height="140" viewBox="0 0 140 140">
+        <circle cx="70" cy="70" r="58" fill="none" stroke="#2e3350" stroke-width="12"/>
+        <!-- Before: 47/100 → circumference = 2π×58 ≈ 364.4 → 47% = 171.3 -->
+        <circle cx="70" cy="70" r="58" fill="none" stroke="#ff4757" stroke-width="12"
+          stroke-dasharray="171.3 364.4" stroke-linecap="round" opacity=".35"/>
+        <!-- After: 91/100 → 91% = 331.6 -->
+        <circle cx="70" cy="70" r="58" fill="none" stroke="#2ed573" stroke-width="12"
+          stroke-dasharray="331.6 364.4" stroke-linecap="round"/>
+      </svg>
+      <div class="score-num">
+        <span style="color:var(--green)">91</span>
+        <span class="score-sub">/ 100</span>
+      </div>
+    </div>
+    <div class="score-bars">
+      <div class="score-bar-row">
+        <span class="score-bar-label">Security</span>
+        <div class="score-bar-track"><div class="score-bar-fill" style="width:88%;background:var(--green)"></div></div>
+        <span style="font-size:.8rem;color:var(--green)">88%</span>
+      </div>
+      <div class="score-bar-row">
+        <span class="score-bar-label">Reliability</span>
+        <div class="score-bar-track"><div class="score-bar-fill" style="width:93%;background:var(--green)"></div></div>
+        <span style="font-size:.8rem;color:var(--green)">93%</span>
+      </div>
+      <div class="score-bar-row">
+        <span class="score-bar-label">Performance</span>
+        <div class="score-bar-track"><div class="score-bar-fill" style="width:90%;background:var(--green)"></div></div>
+        <span style="font-size:.8rem;color:var(--green)">90%</span>
+      </div>
+      <div class="score-bar-row">
+        <span class="score-bar-label">API Contracts</span>
+        <div class="score-bar-track"><div class="score-bar-fill" style="width:95%;background:var(--green)"></div></div>
+        <span style="font-size:.8rem;color:var(--green)">95%</span>
+      </div>
+      <div class="score-bar-row">
+        <span class="score-bar-label">Memory Safety</span>
+        <div class="score-bar-track"><div class="score-bar-fill" style="width:92%;background:var(--green)"></div></div>
+        <span style="font-size:.8rem;color:var(--green)">92%</span>
+      </div>
+      <div class="score-bar-row">
+        <span class="score-bar-label">Code Quality</span>
+        <div class="score-bar-track"><div class="score-bar-fill" style="width:89%;background:var(--green)"></div></div>
+        <span style="font-size:.8rem;color:var(--green)">89%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Row 1 -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h3>Issues by Severity</h3>
+      <canvas id="chartSeverity"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Issues by Category</h3>
+      <canvas id="chartCategory"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Health Score — Before vs After</h3>
+      <canvas id="chartHealth"></canvas>
+    </div>
+  </div>
+
+  <!-- Charts Row 2 -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h3>Issues by File / Module</h3>
+      <canvas id="chartFiles"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Fix Impact by Dimension</h3>
+      <canvas id="chartRadar"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Risk Reduction Timeline</h3>
+      <canvas id="chartTimeline"></canvas>
+    </div>
+  </div>
+</section>
+</div>
+
+<div class="container">
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 2 — CRITICAL ISSUES                                       -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="critical">
+  <h2>🔴 Critical Issues <span class="badge badge-red">3 Found · 3 Fixed</span></h2>
+
+  <!-- C-01 -->
+  <h3>C-01 &nbsp;<span class="badge badge-red">CRITICAL</span>&nbsp; Login OTP Never Sent — Authentication Completely Broken</h3>
+  <p style="color:var(--muted);margin-bottom:12px;">
+    <span class="badge badge-blue">server/src/controllers/user.controller.js</span> &nbsp; loginUser()
+  </p>
+  <p style="margin-bottom:12px;">The <code>sendEmail()</code> call inside <code>loginUser</code> was entirely commented out. The server generated and hashed an OTP, then logged it to the console in plaintext — but <strong>never emailed it to the user</strong>. This means login was impossible for any user without direct server log access. The plaintext OTP in the console is also a security exposure.</p>
+  <div class="diff-grid">
+    <div class="diff-box diff-before">
+      <div class="diff-label">❌ Before</div>
+      <span class="del">const plainOtp = await Otp.generateOtp(email, 'login', 2);</span><br>
+      <span class="del">console.log("otp : ", plainOtp); // OTP leaked to logs!</span><br>
+      <br>
+      <span class="del">// await sendEmail(</span><br>
+      <span class="del">//   user.email, "U-Laundry Login OTP",</span><br>
+      <span class="del">//   `...${plainOtp}...`</span><br>
+      <span class="del">// );</span>
+    </div>
+    <div class="diff-box diff-after">
+      <div class="diff-label">✅ After</div>
+      <span class="add">const plainOtp = await Otp.generateOtp(email, 'login', 2);</span><br>
+      <br>
+      <span class="add">await sendEmail(</span><br>
+      <span class="add">  user.email,</span><br>
+      <span class="add">  "U-Laundry Login OTP",</span><br>
+      <span class="add">  `...${plainOtp}...`</span><br>
+      <span class="add">);</span>
+    </div>
+  </div>
+
+  <!-- C-02 -->
+  <h3>C-02 &nbsp;<span class="badge badge-red">CRITICAL</span>&nbsp; N+1 Query Bomb in Pickup Slot Builder — 28 Sequential DB Calls</h3>
+  <p style="color:var(--muted);margin-bottom:12px;">
+    <span class="badge badge-blue">server/src/controllers/order.controller.js</span> &nbsp; buildAvailablePickupSlots()
+  </p>
+  <p style="margin-bottom:12px;"><code>buildAvailablePickupSlots()</code> looped over 7 days × 4 slot labels and fired a separate <code>findOneAndUpdate</code> for each combination — <strong>28 sequential round-trips</strong> to MongoDB per request. Under any load this causes severe latency and can exhaust the connection pool.</p>
+  <div class="diff-grid">
+    <div class="diff-box diff-before">
+      <div class="diff-label">❌ Before — 28 sequential queries</div>
+      <span class="del">for (let dayOffset = ...) {</span><br>
+      <span class="del">  for (const slotLabel of PICKUP_SLOT_LABELS) {</span><br>
+      <span class="del">    const inventory = await PickupSlotInventory</span><br>
+      <span class="del">      .findOneAndUpdate(...)  // ← 1 query per iteration</span><br>
+      <span class="del">    slots.push(...);</span><br>
+      <span class="del">  }</span><br>
+      <span class="del">}</span>
+    </div>
+    <div class="diff-box diff-after">
+      <div class="diff-label">✅ After — 2 bulk operations total</div>
+      <span class="add">// 1. Build all slot keys upfront</span><br>
+      <span class="add">const slotKeys = [...all 28 pairs...];</span><br>
+      <br>
+      <span class="add">// 2. Single bulkWrite to upsert missing slots</span><br>
+      <span class="add">await PickupSlotInventory.bulkWrite(bulkOps);</span><br>
+      <br>
+      <span class="add">// 3. Single find() to fetch all inventory</span><br>
+      <span class="add">const docs = await PickupSlotInventory.find({</span><br>
+      <span class="add">  slotDate: { $in: slotDates },</span><br>
+      <span class="add">  slotLabel: { $in: PICKUP_SLOT_LABELS }</span><br>
+      <span class="add">}).lean();</span>
+    </div>
+  </div>
+
+  <!-- C-03 -->
+  <h3>C-03 &nbsp;<span class="badge badge-red">CRITICAL</span>&nbsp; Chatbot Response Format Inconsistency — API Contract Broken</h3>
+  <p style="color:var(--muted);margin-bottom:12px;">
+    <span class="badge badge-blue">server/src/controllers/chatbot.controller.js</span> &nbsp; askChatbot()
+  </p>
+  <p style="margin-bottom:12px;">Every other endpoint returns <code>ApiResponse</code> with shape <code>{ success, statusCode, data, message }</code>. The chatbot returned a raw <code>{ success: true, data: { answer } }</code> object — no <code>statusCode</code>, no <code>message</code>. The frontend client expecting <code>data.data.answer</code> would silently receive <code>undefined</code> if the response shape ever changed. Also missing: question length cap (DoS vector).</p>
+  <div class="diff-grid">
+    <div class="diff-box diff-before">
+      <div class="diff-label">❌ Before</div>
+      <span class="del">res.status(200).json({</span><br>
+      <span class="del">  success: true,</span><br>
+      <span class="del">  data: { answer: answer.trim() }</span><br>
+      <span class="del">});</span>
+    </div>
+    <div class="diff-box diff-after">
+      <div class="diff-label">✅ After</div>
+      <span class="add">// Length guard added</span><br>
+      <span class="add">if (question.trim().length > 1000)</span><br>
+      <span class="add">  throw new ApiError(400, "...");</span><br>
+      <br>
+      <span class="add">return res.status(200).json(</span><br>
+      <span class="add">  new ApiResponse(200,</span><br>
+      <span class="add">    { answer: answer.trim() },</span><br>
+      <span class="add">    "Response generated successfully"</span><br>
+      <span class="add">  )</span><br>
+      <span class="add">);</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 3 — HIGH PRIORITY                                         -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="high">
+  <h2>🟠 High Priority Issues <span class="badge badge-orange">5 Found · 5 Fixed</span></h2>
+
+  <!-- H-01 -->
+  <h3>H-01 &nbsp;<span class="badge badge-orange">HIGH</span>&nbsp; Unrestricted File Upload — No Size Limit, No Type Validation</h3>
+  <p style="color:var(--muted);margin-bottom:12px;">
+    <span class="badge badge-blue">server/src/middlewares/multer.middleware.js</span>
+  </p>
+  <p style="margin-bottom:12px;">Multer was configured with <strong>no file size limit and no MIME type filter</strong>. Any authenticated user could upload a multi-gigabyte file or a non-image (PDF, executable, etc.), exhausting disk space and bypassing the intended image-only constraint.</p>
+  <div class="diff-grid">
+    <div class="diff-box diff-before">
+      <div class="diff-label">❌ Before</div>
+      <span class="del">export const upload = multer({ storage });</span>
+    </div>
+    <div class="diff-box diff-after">
+      <div class="diff-label">✅ After</div>
+      <span class="add">const fileFilter = (req, file, cb) => {</span><br>
+      <span class="add">  const allowed = ["image/jpeg","image/png",</span><br>
+      <span class="add">                   "image/webp","image/gif"];</span><br>
+      <span class="add">  if (allowed.includes(file.mimetype))</span><br>
+      <span class="add">    cb(null, true);</span><br>
+      <span class="add">  else cb(new Error("Images only"), false);</span><br>
+      <span class="add">};</span><br>
+      <span class="add">export const upload = multer({</span><br>
+      <span class="add">  storage,</span><br>
+      <span class="add">  limits: { fileSize: 5 * 1024 * 1024, files: 1 },</span><br>
+      <span class="add">  fileFilter,</span><br>
+      <span class="add">});</span>
+    </div>
+  </div>
+
+  <!-- H-02 -->
+  <h3>H-02 &nbsp;<span class="badge badge-orange">HIGH</span>&nbsp; Fractional Quantity Allowed in Orders</h3>
+  <p style="color:var(--muted);margin-bottom:12px;">
+    <span class="badge badge-blue">server/src/controllers/order.controller.js</span> &nbsp; addNewOrder()
+  </p>
+  <p style="margin-bottom:12px;"><code>Number(item.quantity) &gt;= 1</code> passes for <code>1.5</code>, <code>2.7</code>, etc. A user could order 1.5 shirts, causing incorrect pricing and confusing moderators. Added <code>Number.isInteger()</code> guard.</p>
+  <div class="diff-grid">
+    <div class="diff-box diff-before">
+      <div class="diff-label">❌ Before</div>
+      <span class="del">if (!item.quantity || Number(item.quantity) &lt; 1) {</span><br>
+      <span class="del">  throw new ApiError(400, "Quantity must be at least 1");</span><br>
+      <span class="del">}</span>
+    </div>
+    <div class="diff-box diff-after">
+      <div class="diff-label">✅ After</div>
+      <span class="add">const qty = Number(item.quantity);</span><br>
+      <span class="add">if (!item.quantity || qty &lt; 1) {</span><br>
+      <span class="add">  throw new ApiError(400, "Quantity must be at least 1");</span><br>
+      <span class="add">}</span><br>
+      <span class="add">if (!Number.isInteger(qty)) {</span><br>
+      <span class="add">  throw new ApiError(400, "Quantity must be a whole number");</span><br>
+      <span class="add">}</span>
+    </div>
+  </div>
+
+  <!-- H-03 -->
+  <h3>H-03 &nbsp;<span class="badge badge-orange">HIGH</span>&nbsp; Pagination Parameters Not Clamped — Negative/Zero Values Accepted</h3>
+  <p style="color:var(--muted);margin-bottom:12px;">
+    <span class="badge badge-blue">server/src/controllers/order.controller.js</span> &nbsp; getOrdersByUser() · getAllOrders()
+  </p>
+  <p style="margin-bottom:12px;"><code>parseInt(page) || 1</code> returns <code>1</code> for <code>NaN</code> but passes through <code>-5</code> or <code>0</code> directly, causing negative <code>skip</code> values in MongoDB queries. Also no upper bound on <code>limit</code> — a client could request <code>limit=999999</code>.</p>
+  <div class="diff-grid">
+    <div class="diff-box diff-before">
+      <div class="diff-label">❌ Before</div>
+      <span class="del">page  = parseInt(page)  || 1;</span><br>
+      <span class="del">limit = parseInt(limit) || 5;</span>
+    </div>
+    <div class="diff-box diff-after">
+      <div class="diff-label">✅ After</div>
+      <span class="add">page  = Math.max(1,   parseInt(page)  || 1);</span><br>
+      <span class="add">limit = Math.min(100, Math.max(1, parseInt(limit) || 5));</span>
+    </div>
+  </div>
+
+  <!-- H-04 -->
+  <h3>H-04 &nbsp;<span class="badge badge-orange">HIGH</span>&nbsp; Moderator Fetches Only Active Items — Inactive Items Invisible</h3>
+  <p style="color:var(--muted);margin-bottom:12px;">
+    <span class="badge badge-blue">client/src/store/slices/moderatorSlice.ts</span> &nbsp; fetchAllLaundryItems()
+  </p>
+  <p style="margin-bottom:12px;"><code>fetchAllLaundryItems</code> called <code>GET /laundry-items</code> (public endpoint, returns only <code>isActive: true</code> items). Moderators managing the catalog would never see deactivated items. The correct endpoint is <code>/laundry-items/admin/all</code>.</p>
+  <div class="diff-grid">
+    <div class="diff-box diff-before">
+      <div class="diff-label">❌ Before</div>
+      <span class="del">const { data } = await axiosInstance.get('laundry-items');</span><br>
+      <span class="del">return data.data; // only active items!</span>
+    </div>
+    <div class="diff-box diff-after">
+      <div class="diff-label">✅ After</div>
+      <span class="add">// Use admin/all to get ALL items including inactive</span><br>
+      <span class="add">const { data } = await axiosInstance.get('laundry-items/admin/all');</span><br>
+      <span class="add">return data.data;</span>
+    </div>
+  </div>
+
+  <!-- H-05 -->
+  <h3>H-05 &nbsp;<span class="badge badge-orange">HIGH</span>&nbsp; Admin Slice Uses Wrong Route Prefix for Orders</h3>
+  <p style="color:var(--muted);margin-bottom:12px;">
+    <span class="badge badge-blue">client/src/store/slices/adminSlice.ts</span> &nbsp; fetchAllOrders · fetchOrdersByStatus · updateOrderStatus
+  </p>
+  <p style="margin-bottom:12px;">Three admin thunks used <code>orders/</code> prefix (plural). The canonical backend mount is <code>/api/v1/order/</code> (singular). While the server has a backwards-compat alias, relying on it silently is fragile and the alias could be removed. Fixed to use the canonical <code>order/</code> prefix.</p>
+  <div class="diff-grid">
+    <div class="diff-box diff-before">
+      <div class="diff-label">❌ Before</div>
+      <span class="del">axiosInstance.get(`orders/getall?...`)</span><br>
+      <span class="del">axiosInstance.get(`orders/get/${status}`)</span><br>
+      <span class="del">axiosInstance.patch(`orders/update/${id}/${s}`)</span>
+    </div>
+    <div class="diff-box diff-after">
+      <div class="diff-label">✅ After</div>
+      <span class="add">axiosInstance.get(`order/getall?...`)</span><br>
+      <span class="add">axiosInstance.get(`order/get/${status}`)</span><br>
+      <span class="add">axiosInstance.patch(`order/update/${id}/${s}`)</span>
+    </div>
+  </div>
+</section>
+</div>

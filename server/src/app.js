@@ -17,7 +17,9 @@ import { handleRazorpayWebhook } from "./controllers/razorpayWebhook.controller.
 const app = express();
 
 app.use(cors({
-    origin : [process.env.FRONTEND_URL],
+    origin : process.env.FRONTEND_URL 
+        ? [process.env.FRONTEND_URL] 
+        : (() => { throw new Error("FRONTEND_URL env variable is not set"); })(),
     credentials : true
 }))
 

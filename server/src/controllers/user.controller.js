@@ -207,20 +207,19 @@ const loginUser = asyncHandler(async(req, res) => {
 
     // Generate OTP using the dedicated Otp model
     const plainOtp = await Otp.generateOtp(email, 'login', 2);
-    console.log("otp : ", plainOtp);
 
-    // await sendEmail(
-    //     user.email,
-    //     "U-Laundry Login OTP",
-    //     `<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
-    //         <h2 style="color: #333;">U-Laundry Verification</h2>
-    //         <p style="color: #555; font-size: 16px;">Your login verification code is:</p>
-    //         <div style="background: #f4f4f4; padding: 15px 25px; border-radius: 8px; text-align: center; margin: 20px 0;">
-    //             <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #333;">${plainOtp}</span>
-    //         </div>
-    //         <p style="color: #999; font-size: 14px;">This code expires in 2 minutes. Do not share it with anyone.</p>
-    //     </div>`
-    // );
+    await sendEmail(
+        user.email,
+        "U-Laundry Login OTP",
+        `<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333;">U-Laundry Verification</h2>
+            <p style="color: #555; font-size: 16px;">Your login verification code is:</p>
+            <div style="background: #f4f4f4; padding: 15px 25px; border-radius: 8px; text-align: center; margin: 20px 0;">
+                <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #333;">${plainOtp}</span>
+            </div>
+            <p style="color: #999; font-size: 14px;">This code expires in 2 minutes. Do not share it with anyone.</p>
+        </div>`
+    );
 
     return res.status(200).json(
         new ApiResponse(200, {}, "Verification code sent to your email")
@@ -445,16 +444,16 @@ const updateUserDetails = asyncHandler(async(req, res) => {
     const updationData = {};
     
     if(username) { 
-        const userNameExists = await User.findOne({ username, _id: { $ne: userId } });
+        const userNameExists = await User.findOne({ username: username.trim(), _id: { $ne: userId } });
         if(userNameExists){
             return res.status(409).json(
                 new ApiResponse(409, {}, "Username already exists")
             );
         }
-        updationData.username = username;
+        updationData.username = username.trim();
     } 
     if(name){
-        updationData.name = name;
+        updationData.name = name.trim();
     }
 
     const user = await User.findByIdAndUpdate(

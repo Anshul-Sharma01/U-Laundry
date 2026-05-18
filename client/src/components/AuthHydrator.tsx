@@ -35,10 +35,10 @@ export default function AuthHydrator({ children }: { children: React.ReactNode }
         } else if (!isLoggedIn && !isHydrating) {
             socketService.disconnect();
         }
-        // Cleanup on unmount (e.g. full page unload)
-        return () => {
-            socketService.disconnect();
-        };
+        // NOTE: No cleanup on unmount here — AuthHydrator wraps the entire app
+        // and should never unmount during normal usage. Disconnecting on unmount
+        // would kill the socket on every React StrictMode double-invoke in dev.
+        // The socket is explicitly disconnected on logout via the else-if branch above.
     }, [isLoggedIn, user?._id, user?.role, isHydrating]);
 
     if (isHydrating) {

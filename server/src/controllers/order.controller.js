@@ -48,38 +48,63 @@ const isSlotDateAllowed = (slotDate) => {
 
 const buildAvailablePickupSlots = async () => {
     const today = normalizeToDayStart(new Date());
-    const slots = [];
 
+    // Build the full list of (slotDate, slotLabel) pairs we need
+    const slotKeys = [];
     for (let dayOffset = MIN_DAYS_AHEAD_FOR_SLOT; dayOffset < MIN_DAYS_AHEAD_FOR_SLOT + SLOT_WINDOW_DAYS; dayOffset += 1) {
         const targetDate = new Date(today);
         targetDate.setDate(today.getDate() + dayOffset);
         const slotDate = toYyyyMmDd(targetDate);
-
         for (const slotLabel of PICKUP_SLOT_LABELS) {
-            const inventory = await PickupSlotInventory.findOneAndUpdate(
-                { slotDate, slotLabel },
-                {
-                    $setOnInsert: {
-                        slotDate,
-                        slotLabel,
-                        capacity: DEFAULT_SLOT_CAPACITY,
-                        bookedCount: 0,
-                    }
-                },
-                { upsert: true, new: true }
-            ).lean();
-
-            const remaining = Math.max(0, inventory.capacity - inventory.bookedCount);
-            slots.push({
-                slotDate,
-                slotLabel,
-                capacity: inventory.capacity,
-                bookedCount: inventory.bookedCount,
-                remaining,
-                isAvailable: remaining > 0,
-            });
+            slotKeys.push({ slotDate, slotLabel });
         }
     }
+
+    // Bulk-upsert all missing slots in one operation using bulkWrite
+    const bulkOps = slotKeys.map(({ slotDate, slotLabel }) => ({
+        updateOne: {
+            filter: { slotDate, slotLabel },
+            update: {
+                $setOnInsert: {
+                    slotDate,
+                    slotLabel,
+                    capacity: DEFAULT_SLOT_CAPACITY,
+                    bookedCount: 0,
+                }
+            },
+            upsert: true,
+        }
+    }));
+    await PickupSlotInventory.bulkWrite(bulkOps, { ordered: false });
+
+    // Fetch all relevant inventory records in a single query
+    const slotDates = [...new Set(slotKeys.map(k => k.slotDate))];
+    const inventoryDocs = await PickupSlotInventory.find({
+        slotDate: { $in: slotDates },
+        slotLabel: { $in: PICKUP_SLOT_LABELS },
+    }).lean();
+
+    // Build a lookup map for O(1) access
+    const inventoryMap = new Map();
+    for (const doc of inventoryDocs) {
+        inventoryMap.set(`${doc.slotDate}|${doc.slotLabel}`, doc);
+    }
+
+    // Assemble the response
+    const slots = slotKeys.map(({ slotDate, slotLabel }) => {
+        const inventory = inventoryMap.get(`${slotDate}|${slotLabel}`);
+        const capacity = inventory?.capacity ?? DEFAULT_SLOT_CAPACITY;
+        const bookedCount = inventory?.bookedCount ?? 0;
+        const remaining = Math.max(0, capacity - bookedCount);
+        return {
+            slotDate,
+            slotLabel,
+            capacity,
+            bookedCount,
+            remaining,
+            isAvailable: remaining > 0,
+        };
+    });
 
     return slots;
 };
@@ -121,8 +146,12 @@ const addNewOrder = asyncHandler(async(req, res) => {
         if (!item.laundryItem || !isValidObjectId(item.laundryItem)) {
             throw new ApiError(400, `Invalid laundry item ID: ${item.laundryItem}`);
         }
-        if (!item.quantity || Number(item.quantity) < 1) {
+        const qty = Number(item.quantity);
+        if (!item.quantity || qty < 1) {
             throw new ApiError(400, "Quantity must be at least 1 for each item");
+        }
+        if (!Number.isInteger(qty)) {
+            throw new ApiError(400, "Quantity must be a whole number");
         }
         return item.laundryItem;
     });
@@ -465,8 +494,8 @@ const selectPickupSlotForOrder = asyncHandler(async (req, res) => {
 
 const getOrdersByUser = asyncHandler(async (req, res) => {
     let { page, limit } = req.query;
-    page = parseInt(page) || 1;
-    limit = parseInt(limit) || 5;
+    page = Math.max(1, parseInt(page) || 1);
+    limit = Math.min(100, Math.max(1, parseInt(limit) || 5));
 
     const skip = ( page - 1 ) * limit;
 
@@ -572,8 +601,8 @@ const cancelOrder = asyncHandler(async( req, res) => {
 
 const getAllOrders = asyncHandler(async (req, res) => {
     let { page, limit } = req.query;
-    page = parseInt(page) || 1;
-    limit = parseInt(limit) || 3;
+    page = Math.max(1, parseInt(page) || 1);
+    limit = Math.min(100, Math.max(1, parseInt(limit) || 3));
 
     const skip = (page - 1) * limit;
 

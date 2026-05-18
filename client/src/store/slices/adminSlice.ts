@@ -182,7 +182,7 @@ export const fetchAllOrders = createAsyncThunk(
     'admin/fetchAllOrders',
     async ({ page = 1, limit = 10 }: { page?: number; limit?: number }, { rejectWithValue }) => {
         try {
-            const { data } = await axiosInstance.get(`orders/getall?page=${page}&limit=${limit}`);
+            const { data } = await axiosInstance.get(`order/getall?page=${page}&limit=${limit}`);
             return data;
         } catch (err: any) {
             return rejectWithValue(err.response?.data?.message || 'Failed to fetch orders');
@@ -194,7 +194,7 @@ export const fetchOrdersByStatus = createAsyncThunk(
     'admin/fetchOrdersByStatus',
     async (status: string, { rejectWithValue }) => {
         try {
-            const { data } = await axiosInstance.get(`orders/get/${encodeURIComponent(status)}`);
+            const { data } = await axiosInstance.get(`order/get/${encodeURIComponent(status)}`);
             return data;
         } catch (err: any) {
             return rejectWithValue(err.response?.data?.message || 'Failed to fetch orders');
@@ -206,7 +206,7 @@ export const updateOrderStatus = createAsyncThunk(
     'admin/updateOrderStatus',
     async ({ orderId, status }: { orderId: string; status: string }, { rejectWithValue }) => {
         try {
-            const { data } = await axiosInstance.patch(`orders/update/${orderId}/${encodeURIComponent(status)}`);
+            const { data } = await axiosInstance.patch(`order/update/${orderId}/${encodeURIComponent(status)}`);
             return data;
         } catch (err: any) {
             return rejectWithValue(err.response?.data?.message || 'Failed to update order status');

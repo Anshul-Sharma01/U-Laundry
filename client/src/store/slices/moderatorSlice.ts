@@ -117,8 +117,9 @@ export const fetchAllLaundryItems = createAsyncThunk(
     'moderator/fetchAllLaundryItems',
     async (_, { rejectWithValue }) => {
         try {
-            const { data } = await axiosInstance.get('laundry-items');
-            return data.data; // Since ApiResponse wraps it in data
+            // Use /admin/all to get ALL items including inactive ones (moderator view)
+            const { data } = await axiosInstance.get('laundry-items/admin/all');
+            return data.data;
         } catch (err: any) {
             return rejectWithValue(err.response?.data?.message || 'Failed to fetch laundry items');
         }

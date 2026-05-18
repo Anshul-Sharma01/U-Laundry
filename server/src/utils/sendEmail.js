@@ -6,7 +6,8 @@ const sendEmail = async function ( email, subject, message ){
     try{
         const port = Number(process.env.SMTP_PORT);
 
-        let transporter = nodemailer.createTransport({
+        // Create a fresh transporter per call to avoid connection pool exhaustion
+        const transporter = nodemailer.createTransport({
             host : process.env.SMTP_HOST,
             port,
             secure : port === 465,
@@ -27,6 +28,9 @@ const sendEmail = async function ( email, subject, message ){
             subject : subject,
             html : message
         });
+
+        // Explicitly close the connection pool after sending
+        transporter.close();
 
     }catch(err){
         console.error(`Error sending email : ${err}`);

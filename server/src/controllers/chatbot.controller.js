@@ -1,4 +1,5 @@
 import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 import Groq from "groq-sdk";
 
 const groq = new Groq({
@@ -39,6 +40,11 @@ export const askChatbot = async (req, res, next) => {
             throw new ApiError(400, "Question is required and must be a non-empty string");
         }
 
+        // Limit question length to prevent abuse
+        if (question.trim().length > 1000) {
+            throw new ApiError(400, "Question must not exceed 1000 characters");
+        }
+
         if (!process.env.GROQ_API_KEY) {
             throw new ApiError(500, "Chatbot service is not configured. Please contact administrator.");
         }
@@ -62,12 +68,9 @@ export const askChatbot = async (req, res, next) => {
 
         const answer = completion.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response. Please try again.";
 
-        res.status(200).json({
-            success: true,
-            data: {
-                answer: answer.trim()
-            }
-        });
+        return res.status(200).json(
+            new ApiResponse(200, { answer: answer.trim() }, "Response generated successfully")
+        );
 
     } catch (error) {
         console.error("Chatbot error:", error);
